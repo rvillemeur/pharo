@@ -26,7 +26,16 @@ MorphicUIManager class >> isActiveManager [
 { #category : #testing }
 MorphicUIManager class >> isValidForCurrentSystemConfiguration [
 
-	^ Smalltalk isHeadless not or: [ Smalltalk isHeadless and: [ CommandLineArguments new hasOption: 'interactive'  ] ]
+	^ Smalltalk isHeadless not 
+		or: [ 
+			Smalltalk isHeadless 
+			and: [ Smalltalk isInteractiveGraphic ] ]
+]
+
+{ #category : #'ui process' }
+MorphicUIManager class >> uiProcess [ 
+
+	^ UIProcess
 ]
 
 { #category : #private }
@@ -36,7 +45,7 @@ MorphicUIManager >> activate [
 	self currentWorld currentCursor: self currentWorld currentCursor.
 		
 	self currentWorld ifNotNil: [:world | world restoreMorphicDisplay].
-	WorldMorph extraWorldList do: #restoreMorphicDisplay.
+	WorldMorph extraWorldList do: [:each | each restoreMorphicDisplay].
 
 	activeTranscript 
 		ifNil: [

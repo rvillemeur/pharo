@@ -4,6 +4,12 @@ A DropListPresenter is a Spec presenter for drop lists.
 I am assume there is a little problem on an empty list, but frankly, who creates an empty drop list ?
 
 See DropListExample for an example
+
+@@TODO
+
+!! Transmissions
+- #inputItemsPort (default)
+- #outputSelectionPort (default)
 "
 Class {
 	#name : #SpDropListPresenter,
@@ -131,6 +137,12 @@ SpDropListPresenter >> initialize [
 ]
 
 { #category : #api }
+SpDropListPresenter >> items [ 
+
+	^ self listItems
+]
+
+{ #category : #api }
 SpDropListPresenter >> items: aList [
 	"Populate the drop list with a list of ui specific items"
 
@@ -143,6 +155,7 @@ SpDropListPresenter >> items: aList [
 		and: [ startsWithSelection 
 		and: [ self selection isEmpty ] ])
 		ifTrue: [ self selectIndex: 1 ]
+		ifFalse: [ self resetSelection ]
 ]
 
 { #category : #api }

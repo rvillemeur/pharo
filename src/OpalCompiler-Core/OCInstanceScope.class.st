@@ -6,8 +6,7 @@ Class {
 	#superclass : #OCAbstractScope,
 	#instVars : [
 		'vars',
-		'selfVar',
-		'superVar'
+		'reservedVars'
 	],
 	#category : #'OpalCompiler-Core-Semantics'
 }
@@ -18,26 +17,21 @@ OCInstanceScope >> allTemps [
 ]
 
 { #category : #lookup }
-OCInstanceScope >> findVariable: lookupBlock ifNone: notFoundBlock [ 
-
-	(lookupBlock value: selfVar) ifTrue: [ ^ selfVar ].
-	(lookupBlock value: superVar) ifTrue: [ ^ superVar ].
+OCInstanceScope >> hasBindingThatBeginsWith: aString [
+	"Answer true if true, false or any slot start with aString"
 	
-	vars valuesDo: [ :var | (lookupBlock value: var) ifTrue: [ ^ var ] ].
-
-	^ outerScope findVariable: lookupBlock ifNone: notFoundBlock 
+	(reservedVars hasBindingThatBeginsWith: aString) ifTrue: [ ^true ].
+	(vars hasBindingThatBeginsWith: aString) ifTrue: [ ^true ].
+	
+	^ self outerScope hasBindingThatBeginsWith: aString
 ]
 
 { #category : #initialization }
 OCInstanceScope >> initialize [
   
 	vars := Dictionary new.
-	selfVar := OCSelfVariable new
-		scope: self;
-		yourself.
-	superVar := OCSuperVariable new
-		scope: self;
-		yourself.
+	reservedVars  := (ReservedVariable subclasses collect: [ :class |
+			class instance name -> class instance]) asDictionary 
 ]
 
 { #category : #acessing }
@@ -54,17 +48,14 @@ OCInstanceScope >> isInstanceScope [
 { #category : #lookup }
 OCInstanceScope >> lookupVar: name [
 	"Return a ScopeVar for my inst var with this name.  Return nil if none found"
-
-	name = 'self' ifTrue: [^ selfVar].
-	name = 'super' ifTrue: [^ superVar].
+	reservedVars at: name ifPresent: [:v | ^ v].
 	^ vars at: name ifAbsent: [self outerScope lookupVar: name]
 ]
 
 { #category : #lookup }
 OCInstanceScope >> lookupVarForDeclaration: name [
-	"Return a ScopeVar for my inst var with this name.  Return nil if none found"
-	name = 'self' ifTrue: [^ selfVar].
-	name = 'super' ifTrue: [^ superVar].
+	"This is a version of #lookupVar: that skips the OCRequestorScope"
+	reservedVars at: name ifPresent: [:v | ^ v].
 	^ vars at: name ifAbsent: [self outerScope lookupVarForDeclaration: name]
 ]
 
@@ -74,14 +65,15 @@ OCInstanceScope >> newMethodScope [
 	^ OCMethodScope new outerScope: self
 ]
 
+{ #category : #acessing }
+OCInstanceScope >> scopeLevel [
+	"For debugging we print a counter for all scopes, starting from the Method as 1, so we are 0"
+	^ 0
+]
+
 { #category : #initializing }
 OCInstanceScope >> slots: slotCollection [
 
 	slotCollection do: [ :slot |
-		vars at: slot name put:
-			(OCSlotVariable new
-				slot: slot;
-				scope: self;
-				yourself)].
-
+		vars at: slot name put: slot]
 ]

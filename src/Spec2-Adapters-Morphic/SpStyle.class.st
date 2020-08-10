@@ -1,9 +1,32 @@
 "
-I'm a style to be used in morphic adaptors. 
-I can be a class (which is a set of classes and properties) or a property. 
-My children will define concrete implementations of each.
+! Stylesheets for Morphic backend
 
-Most important part, a style can be applied to (using #applyTo:) a morph. This morph will be the morph generated in an adaptor.
+A style is a property container to ""style"" morphic components, and define (in a certain degree) its behaviour within the different layouts implemented.
+There are two kinds of style elements: style classes and style properties.
+
+!! Stylesheet STON format
+To easy the definition and storage outside an image, a stylesheet may be defined as a STON file, string or stream, that you can later read using *class:SpStyleSTONReader*.
+A defined stylesheet has to have always a root element, and this root element needs to be called ==.application==. 
+
+See this small example: 
+
+[[[language=Smalltalk
+SpStyleSTONReader fromString: '
+.application [  
+	.myButton [
+		Geometry { #width: 150 }
+	]
+]'
+]]]
+
+As a more complex example, see *method:SpStyle class#createDefaultStyleSheet* who defines the default behaviour of all elements of a Morphic Spec backend.
+
+!! Referencing style elements in your presenters
+You can add styles to your presenters easily by using *class:SpAbstractWidgetPresenter>>#addStyle:*
+
+@@TODO more examples
+
+See *class:SpStyleClass*, *class:SpStyleProperty*, *class:SpMorphStyle*
 "
 Class {
 	#name : #SpStyle,
@@ -17,20 +40,35 @@ Class {
 { #category : #private }
 SpStyle class >> createDefaultStyleSheet [
 
-	^ SpStyleSTONReader fromString: '
+	^ SpStyleSTONReader fromString: self defaultStyleSheetData
+	
+]
+
+{ #category : #accessing }
+SpStyle class >> defaultStyleSheet [
+
+	self flag: #TODO. "This is wrong. Default style sheet should reside in the Pharo application, 
+	but since we do not have that abstraction (yet) in the system, we put it here for now"
+	^ DefaultStyleSheet ifNil: [ 
+		DefaultStyleSheet := self createDefaultStyleSheet ].
+
+]
+
+{ #category : #private }
+SpStyle class >> defaultStyleSheetData [
+
+	^'
 .application [
 	Font { #name: "Source Sans Pro", #size: 10 },
 	Geometry { #height: 25 },
 	.label [
-		Geometry { #hResizing: true },
+		Geometry { #hResizing: true, #height: 18 },
 		.headerError [Draw { #color:  Color{ #red: 1, #green: 0, #blue: 0, #alpha: 1}}  ],
 		.headerSuccess [Draw { #color: Color{ #red: 0, #green: 1, #blue: 0, #alpha: 1}}  ],
 		.header [ 
-			Draw { #color: Color{ #rgb: 622413393 }},
-			Font { #name: "Lucida Grande", #size: 10, #bold: true } ],
+			Draw { #color: Color{ #rgb: 622413393 } } ],
 		.shortcut [ 
-			Draw { #color: Color{ #rgb: 622413393 } },
-			Font { #name: "Lucida Grande", #size: 10 }
+			Draw { #color: Color{ #rgb: 622413393 } }
 		],
 		.fixed [ 
 			Geometry { #hResizing: false, #width: 100 }
@@ -49,7 +87,9 @@ SpStyle class >> createDefaultStyleSheet [
 		]
 	],
 	.checkBox [  
-		Geometry { #hResizing: true }
+		Geometry { #hResizing: true },
+		.compact [
+			Geometry { #hResizing: false, #width: 20 } ]
 	],
 	.radioButton [ 
 		Geometry { #hResizing: true }
@@ -64,10 +104,7 @@ SpStyle class >> createDefaultStyleSheet [
 		Geometry { #width: 150, #hResizing: true }
 	],
 	.actionBar [  
-		Container { 
-			#borderColor: Color { #rgb: 0, #alpha: 0 }, 
-			#borderWidth: 2, 
-			#padding: 5 },
+		Container { #borderWidth: 0, #padding: 5 },
 		Geometry { #width: 150, #height: 29, #hResizing: true, #vResizing: false }
 	],
 	.menuBar [
@@ -86,21 +123,35 @@ SpStyle class >> createDefaultStyleSheet [
 			Geometry { #height: 45 }
 		]
 	],
+	.text [ 
+		Geometry { #height: 0 }
+	],
 	.code [
 		Font { #name : "Source Code Pro", #size : 10 }
-	] 
+	],
+	.codePopover [ 
+		Draw { #color : #transparent },
+		.button [
+			Geometry { #width : 25 }
+		]
+	],
+	.codePopoverError [ 
+		Draw { #backgroundColor: #C20000 },
+		Font { #color: #white } 
+	],
+	.scrollbarPopoverLarge [ 
+		Geometry { #height: 350 } 
+	]
 ]
-'
+'	
 ]
 
-{ #category : #accessing }
-SpStyle class >> defaultStyleSheet [
+{ #category : #'instance creation' }
+SpStyle class >> newApplication [
 
-	self flag: #TODO. "This is wrong. Default style sheet should reside in the Pharo application, 
-	but since we do not have that abstraction (yet) in the system, we put it here for now"
-	^ DefaultStyleSheet ifNil: [ 
-		DefaultStyleSheet := self createDefaultStyleSheet ].
-
+	^ SpStyleClass new 
+		name: 'application';
+		yourself
 ]
 
 { #category : #accessing }

@@ -462,8 +462,11 @@ RGObject >> isVariable [
 
 { #category : #'testing types' }
 RGObject >> isVariableDefinition [
-
-	^ false
+	self 
+		deprecated: 'Use #isVariable instead.' 
+		transformWith: '`@receiver isVariableDefinition' -> '`@receiver isVariable'.
+	
+	^ self isVariable
 ]
 
 { #category : #resolving }
@@ -585,13 +588,13 @@ RGObject >> propertyNames [
 { #category : #'private - backend interface' }
 RGObject >> pvtFullyResolved [
 
-	^ (self pvtResolvableProperties collect: #value) allSatisfy: #isRingFullyResolved
+	^ (self pvtResolvableProperties collect: [:each | each value]) allSatisfy: [:each | each isRingFullyResolved]
 ]
 
 { #category : #'private - backend interface' }
 RGObject >> pvtFullyUnresolved [		
 		
-	^ (self pvtResolvableProperties collect: #value) noneSatisfy: #isRingFullyResolved 
+	^ (self pvtResolvableProperties collect: [:each | each value]) noneSatisfy: [:each | each isRingFullyResolved ]
 ]
 
 { #category : #'private - backend interface' }

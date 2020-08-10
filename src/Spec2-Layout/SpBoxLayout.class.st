@@ -1,6 +1,18 @@
+"
+I am a layout that will arrange presenters in a box, vertically or horizontally.
+My elements can be added at the begining or at the end of the box (see add: and addLast: method families).
+This layout can be created with certain properties: 
+
+- borderWidth: the border to let empty before placing the presenters. 
+- spacing: the space to let between presenters.
+- homogeneous: if homogeneous, the layout will try to give same space to each presenter included.
+- hAlign/vAlign: how the presenters will be aligned in the layout.
+"
 Class {
 	#name : #SpBoxLayout,
 	#superclass : #SpExecutableLayout,
+	#traits : 'SpTAlignable',
+	#classTraits : 'SpTAlignable classTrait',
 	#instVars : [
 		'direction',
 		'spacing',
@@ -211,17 +223,36 @@ SpBoxLayout >> isVertical [
 ]
 
 { #category : #removing }
-SpBoxLayout >> remove: aPresenter [
-
-	children removeKey: aPresenter.
-	self announceChildRemoved: aPresenter
-]
-
-{ #category : #removing }
 SpBoxLayout >> removeAll [
 
 	children removeAll.
 	adapter ifNotNil: [ :anAdapter | anAdapter removeAll ]
+]
+
+{ #category : #adding }
+SpBoxLayout >> replace: aPresenter with: otherPresenter [
+	"Replace aPresenter with otherPresenter. 
+	 Original constraints will be preserved."
+	
+	self 
+		replace: aPresenter 
+		with: otherPresenter
+		withConstraints: (self constraintsFor: aPresenter)
+]
+
+{ #category : #adding }
+SpBoxLayout >> replace: aPresenter with: otherPresenter withConstraints: constraints [
+	"Replace aPresenter with otherPresenter"
+	
+	children
+		replaceKey: aPresenter
+		with: otherPresenter.
+
+	self withAdapterDo: [ :anAdapter |
+		anAdapter 
+			replace: aPresenter 
+			with: otherPresenter
+			withConstraints: constraints ]
 ]
 
 { #category : #accessing }

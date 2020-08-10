@@ -129,12 +129,11 @@ MessageBrowser class >> title [
 { #category : #private }
 MessageBrowser >> accept: text notifying: notifyer [
 
-	^ self selectedMessage
-		ifNotNil: [:message | 
-			message methodClass 
-				compile: text 
-				classified: message protocol
-				notifying: notifyer ]
+	^ self selectedMessage ifNotNil: [ :message | 
+		message methodClass 
+			compile: text 
+			classified: message protocol
+			notifying: notifyer ]
 ]
 
 { #category : #'text selection' }
@@ -171,9 +170,9 @@ MessageBrowser >> codeFont [
 { #category : #initialization }
 MessageBrowser >> connectPresenters [
 	messageList
-		whenSelectionChangedDo: [ :selection | [ :item | self selectItem: item ] cull: selection selectedItem ];
+		whenSelectionChangedDo: [ :selection | self selectItem: selection selectedItem ];
 		whenModelChangedDo: [ self updateTitle ].
-	textModel acceptBlock: [ :text :notifyer | (self accept: text notifying: notifyer) notNil ]
+	textModel whenSubmitDo: [ :text | (self accept: text notifying: nil) notNil ]
 ]
 
 { #category : #'text selection' }
@@ -453,15 +452,14 @@ MessageBrowser >> selectIndex: anIndex [
 
 { #category : #private }
 MessageBrowser >> selectItem: item [
+
 	toolbarPresenter method: item.
-	textModel behavior: (item ifNotNil: [ item methodClass ]).
-	textModel doItReceiver: textModel behavior.
+	textModel beForMethod: item.
 	textModel text: (self textConverter
 		method: item;
 		getText).
 	textModel clearUndoManager.
 	self installIconStylerFor: item
-
 ]
 
 { #category : #accessing }

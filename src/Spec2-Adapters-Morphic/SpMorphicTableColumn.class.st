@@ -30,9 +30,21 @@ SpMorphicTableColumn >> id [
 ]
 
 { #category : #testing }
+SpMorphicTableColumn >> isExpandable [
+
+	^ self model isExpandable
+]
+
+{ #category : #testing }
 SpMorphicTableColumn >> isSortable [
 
 	^ self model isSortable
+]
+
+{ #category : #testing }
+SpMorphicTableColumn >> isSorted [
+
+	^ self sortingStrategy isSortingEnabled and: [ self sortingStrategy state isSorted ]
 ]
 
 { #category : #accessing }

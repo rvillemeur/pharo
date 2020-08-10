@@ -16,9 +16,10 @@ SpMorphicLayoutAdapter >> adapter [
 { #category : #factory }
 SpMorphicLayoutAdapter >> add: aPresenter constraints: constraints [
  
+	aPresenter owner: self model. 
 	self widgetDo: [ :aPanel |
 		self 
-			basicAdd: aPresenter 
+			basicAdd: aPresenter
 			constraints: constraints 
 			to: aPanel ]
 ]

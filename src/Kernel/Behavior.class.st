@@ -97,6 +97,11 @@ Behavior >> addSelector: selector withMethod: compiledMethod notifying: requesto
 ]
 
 { #category : #'adding/removing methods' }
+Behavior >> addSelector: selector withRecompiledMethod: compiledMethod [ 
+	^ self addSelectorSilently: selector withMethod: compiledMethod
+]
+
+{ #category : #'adding/removing methods' }
 Behavior >> addSelectorSilently: selector withMethod: compiledMethod [
 	"Add the message selector with the corresponding compiled method to the 
 	receiver's method dictionary.
@@ -533,6 +538,23 @@ Behavior >> classDepth [
 	^ self superclass classDepth + 1
 ]
 
+{ #category : #accessing }
+Behavior >> classLayout [
+	^ layout
+		ifNil: [ 
+			| superLayout scope |
+			superLayout := superclass 
+				ifNil: [ FixedLayout new slotScope: LayoutEmptyScope instance] "happened in the bootrap"
+				ifNotNil: [:sl | sl classLayout].
+			scope := superLayout slotScope extend.
+			layout := superLayout class extending: superLayout scope: scope host: self ]
+]
+
+{ #category : #accessing }
+Behavior >> classLayout: aClassLayout [
+	layout := aClassLayout
+]
+
 { #category : #'accessing instances and variables' }
 Behavior >> classVarNames [
 	"Answer a collection of the receiver's class variable names."
@@ -609,6 +631,12 @@ Behavior >> deepCopy [
 	^ self shallowCopy
 ]
 
+{ #category : #'accessing instances and variables' }
+Behavior >> definedVariables [
+	"return all the Variables defined"
+	^ self slots
+]
+
 { #category : #dependencies }
 Behavior >> dependentClasses [
 	"Return the list of classes used myself"
@@ -623,11 +651,10 @@ Behavior >> dependentClasses [
 	(self methods, self classSide methods) 
 		do: [ :m | m literalsDo: [ :l | 
 					"We also check if the method is not an extension"
-					((((l isVariableBinding 
-					and: [ l value notNil ]) 
-					and: [ l value isBehavior ])
-					and: [ m category notEmpty ] )
-					and: [ m category first ~= $* ])  ifTrue: [ cll add: l value ] ]  ].
+					(l isVariableBinding 
+					and: [ l isGlobalClassNameBinding
+					and: [ m category notEmpty 
+					and: [ m category first ~= $* ]]])  ifTrue: [ cll add: l value ] ] ] .
 	^ cll asArray
 ]
 
@@ -707,14 +734,10 @@ Behavior >> firstCommentAt:  selector [
 
 { #category : #'accessing method dictionary' }
 Behavior >> firstPrecodeCommentFor:  selector [
-	"If there is a comment in the source code at the given selector that preceeds the body of the method, return it here, else return nil"
-
-	| method |
-	"Behavior firstPrecodeCommentFor: #firstPrecodeCommentFor:"
-	(#(Comment Definition Hierarchy) includes: selector)
-		ifTrue: [^ nil].
-	method := self compiledMethodAt: selector asSymbol ifAbsent: [^ nil].
-	^method ast firstPrecodeComment.
+	self 
+		deprecated: 'use #comment on the method' 
+		transformWith: '`@receiver firstPrecodeCommentFor: `@arg' -> '(`@receiver>>`@arg) comment'.
+	^(self>>selector) comment
 	
 ]
 
@@ -818,6 +841,13 @@ Behavior >> hasAbstractMethods [
 	
 	self methodsDo: [:each | each isAbstract ifTrue: [ ^true ]].
 	^false
+]
+
+{ #category : #'testing method dictionary' }
+Behavior >> hasMethodAccessingVariable: aVariable [
+	"Answer true if any of my methods access the variable"
+
+	^self methods anySatisfy: [ :method | aVariable isAccessedIn: method ]
 ]
 
 { #category : #'testing method dictionary' }
@@ -938,10 +968,9 @@ Behavior >> instVarNames [
 
 	| mySize superSize |
 	mySize := self instSize.
-	superSize := 
-		self superclass == nil
-			ifTrue: [0]
-			ifFalse: [self superclass instSize].
+	superSize := self superclass
+			ifNil: [0]
+			ifNotNil: [self superclass instSize].
 	mySize = superSize ifTrue: [^#()].	
 	^(superSize + 1 to: mySize) collect: [:i | 'inst' , i printString]
 ]
@@ -955,6 +984,12 @@ Behavior >> instanceCount [
 	count := 0.
 	self allInstancesDo: [:x | count := count + 1].
 	^count
+]
+
+{ #category : #'accessing instances and variables' }
+Behavior >> instanceVariables [
+	"in older version, this method was returning names, not objects"
+	^self slots
 ]
 
 { #category : #'memory usage' }
@@ -1114,11 +1149,7 @@ Behavior >> isPool [
 { #category : #testing }
 Behavior >> isReferenced [
 	"Returns true if the class is referenced from a method."
-	"This method should just forward to the binding, this can be done when we do not use
- 	Association for the binding on the class side"
-
-	^ self environment allBehaviors
-		anySatisfy: [ :behavior | behavior hasSelectorReferringTo: self binding ]
+	^ self binding isReferenced
 ]
 
 { #category : #'testing class hierarchy' }
@@ -1333,42 +1364,6 @@ Behavior >> obsoleteSubclasses [
 Behavior >> postCopy [
 	super postCopy.
 	self methodDict: self methodDict copy
-]
-
-{ #category : #'accessing method dictionary' }
-Behavior >> precodeCommentOrInheritedCommentFor: selector [ 
-	"Answer a string representing the first comment in the method associated 
-	with selector, considering however only comments that occur before the 
-	beginning of the actual code. If the version recorded in the receiver is 
-	uncommented, look up the inheritance chain. Return nil if none found."
-	
-	| aSuper aComment |
-	^ (aComment := self firstPrecodeCommentFor: selector) isEmptyOrNil
-		ifTrue: [(self == Behavior
-					or: [self superclass == nil
-							or: [(aSuper := self superclass whichClassIncludesSelector: selector) == nil]])
-				ifFalse: [aSuper precodeCommentOrInheritedCommentFor: selector]]
-		ifFalse: [aComment]
-]
-
-{ #category : #printing }
-Behavior >> printHierarchy [
-	"Answer a description containing the names and instance variable names 
-	of all of the subclasses and superclasses of the receiver."
-
-	| aStream index |
-	index := 0.
-	aStream := (String new: 16) writeStream.
-	self allSuperclasses reverseDo: 
-		[:aClass | 
-		aStream crtab: index.
-		index := index + 1.
-		aStream nextPutAll: aClass name.
-		aStream space.
-		aStream print: aClass instVarNames].
-	aStream cr.
-	self printSubclassesOn: aStream level: index.
-	^aStream contents
 ]
 
 { #category : #printing }
@@ -1699,21 +1694,6 @@ Behavior >> superclass: aClass methodDictionary: mDict format: fmt [
 	self setFormat: fmt.
 	self methodDict: mDict.
 
-]
-
-{ #category : #'accessing method dictionary' }
-Behavior >> supermostPrecodeCommentFor: selector [ 
-	"Answer a string representing the precode comment in the most distant 
-	superclass's implementation of the selector. Return nil if none found."
-	| aSuper superComment |
-	(self == Behavior
-			or: [self superclass == nil
-					or: [(aSuper := self superclass whichClassIncludesSelector: selector) == nil]])
-		ifFalse: ["There is a super implementor"
-			superComment := aSuper supermostPrecodeCommentFor: selector].
-	^ superComment
-		ifNil: [self firstPrecodeCommentFor: selector
-			"ActorState supermostPrecodeCommentFor: #printOn:"]
 ]
 
 { #category : #'testing method dictionary' }

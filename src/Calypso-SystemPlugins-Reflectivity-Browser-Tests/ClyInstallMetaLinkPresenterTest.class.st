@@ -36,12 +36,12 @@ ClyInstallMetaLinkPresenterTest >> presenterForMetalinkUninstallation [
 ClyInstallMetaLinkPresenterTest >> setUp [
 	super setUp.
 	MetaLink uninstallAll.
-	node := RBTemporaryNode named: 'test'.
+	node := RBVariableNode named: 'test'.
 	metalink := MetaLink new.
 	metalink2 := MetaLink new.
 	breakpoint := MetaLink new metaObject: Break; yourself.
 	executionCounter := MetaLink new metaObject: ExecutionCounter new; yourself.
-	watchpoint := MetaLink new metaObject: Watchpoint new; yourself.
+	watchpoint := MetaLink new metaObject: Watch new; yourself.
 	node propertyAt: #links put: {metalink. breakpoint. executionCounter. watchpoint} asOrderedCollection 
 	
 ]

@@ -143,11 +143,11 @@ BlockClosureTest >> testCullCullCullCull [
 BlockClosureTest >> testNew [
 	self	should: [Context new: 5] raise: Error.
 	[Context new: 5]
-		ifErrorDo: [:error | self assert: error description equals: 'Error: Contexts must only be created with newForMethod:'].
+		onErrorDo: [:error | self assert: error description equals: 'Error: Contexts must only be created with newForMethod:'].
 	[Context new]
-		ifErrorDo: [:error | self assert: error description equals: 'Error: Contexts must only be created with newForMethod:'].	
+		onErrorDo: [:error | self assert: error description equals: 'Error: Contexts must only be created with newForMethod:'].	
 	[Context basicNew]
-		ifErrorDo: [:error | self assert: error description equals: 'Error: Contexts must only be created with newForMethod:'].
+		onErrorDo: [:error | self assert: error description equals: 'Error: Contexts must only be created with newForMethod:'].
 
 ]
 
@@ -157,8 +157,14 @@ BlockClosureTest >> testNoArguments [
 	"avoid compile error in GemStone"
 	block1 := [ :arg | 1 + 2 ].
 	block2 := [ :arg1 :arg2 | 1 + 2 ].
-	[ 10 timesRepeat: block1 ] ifErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 1 argument, but was called with 0 arguments.' ].
-	[ 10 timesRepeat: block2 ] ifErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 2 arguments, but was called with 0 arguments.' ]
+	[ 10 timesRepeat: block1 ] onErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 1 argument, but was called with 0 arguments.' ].
+	[ 10 timesRepeat: block2 ] onErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 2 arguments, but was called with 0 arguments.' ]
+]
+
+{ #category : #tests }
+BlockClosureTest >> testOnErrorDo [
+
+	self assert: ([1 foo ] onErrorDo: [:err | 'huh?']) equals: 'huh?'
 ]
 
 { #category : #'tests - on-fork' }
@@ -195,14 +201,15 @@ BlockClosureTest >> testOnForkErrorExecutesBlock [
 { #category : #'tests - on-fork' }
 BlockClosureTest >> testOnForkErrorOnSeparateProcess [
 	"Test that if code runs with error, there is fork"
-	
-	| result forkedProc sema |
-	
-	sema := Semaphore new.	
-	result := [ 1/0 ] on: Exception fork: [ forkedProc := Processor activeProcess. sema signal ].
+
+	| forkedProc sema |
+	sema := Semaphore new.
+	[ 1 / 0 ] on: Exception fork: [ 
+		forkedProc := Processor activeProcess.
+		sema signal ].
 
 	sema wait.
-	self assert: (forkedProc ~~ Processor activeProcess).
+	self deny: forkedProc identicalTo: Processor activeProcess
 ]
 
 { #category : #'tests - on-fork' }
@@ -270,21 +277,20 @@ BlockClosureTest >> testOneArgument [
 	| c |
 	c := OrderedCollection new.
 	c add: 'hello'.
-	[ c do: [ 1 + 2 ] ] ifErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 0 arguments, but was called with 1 argument.' ].
-	[ c do: [ :arg1 :arg2 | 1 + 2 ] ] ifErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 2 arguments, but was called with 1 argument.' ]
+	[ c do: [ 1 + 2 ] ] onErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 0 arguments, but was called with 1 argument.' ].
+	[ c do: [ :arg1 :arg2 | 1 + 2 ] ] onErrorDo: [ :err | self assert: err description equals: 'ArgumentsCountMismatch: This block accepts 2 arguments, but was called with 1 argument.' ]
 ]
 
 { #category : #'tests - printing' }
 BlockClosureTest >> testPrintOn [
-
-	self assert: [ 1 + 2 ] printString equals: '[ 1 + 2 ]'
+	self assert: (RBParser parseExpression: [ 1 + 2 ] printString) equals: (RBParser parseExpression: '[ 1 + 2 ]')
 ]
 
 { #category : #'tests - printing' }
 BlockClosureTest >> testPrintOnBlockDefinedInMethodWithoutSourceCode [
 	| method copy start block |
 	"Generating method with source code"
-	UndefinedObject compile: 'method ^ [1 + 2]'.
+	UndefinedObject compile: 'method ^ [ 1 + 2 ]'.
 	method := UndefinedObject >> #method.
 	["Removing the source code of method"
 		copy := method copyWithTrailerBytes: CompiledMethodTrailer new.
@@ -293,7 +299,7 @@ BlockClosureTest >> testPrintOnBlockDefinedInMethodWithoutSourceCode [
 		block := nil method.
 		
 		self deny: method hasSourceCode.
-		self assert: block asString equals: [ 1 + 2 ] asString.
+		self assert: (RBParser parseExpression: block printString) equals: (RBParser parseExpression: '[ 1 + 2 ]').
 	] ensure: [ method removeFromSystem ]
 ]
 
@@ -307,18 +313,24 @@ BlockClosureTest >> testSetUp [
 	self assert: (aBlockContext method isNil or: [ aBlockContext method isKindOf: CompiledCode ])
 ]
 
-{ #category : #testing }
+{ #category : #tests }
 BlockClosureTest >> testSupplyAnswerOfFillInTheBlank [
-
-	self should: ['blue' = ([UIManager default request: 'Your favorite color?'] 
-		valueSupplyingAnswer: #('Your favorite color?' 'blue'))]
+	self
+		assert:
+			([ UIManager default request: 'Your favorite color?' ]
+				valueSupplyingAnswer: #('Your favorite color?' 'blue'))
+		equals: 'blue'
 ]
 
-{ #category : #testing }
+{ #category : #tests }
 BlockClosureTest >> testSupplyAnswerOfFillInTheBlankUsingDefaultAnswer [
-
-	self should: ['red' = ([UIManager default  request: 'Your favorite color?' initialAnswer: 'red'] 
-		valueSupplyingAnswer: #('Your favorite color?' #default))]
+	self
+		assert:
+			([ UIManager default
+				request: 'Your favorite color?'
+				initialAnswer: 'red' ]
+				valueSupplyingAnswer: #('Your favorite color?' #default))
+		equals: 'red'
 ]
 
 { #category : #tests }
@@ -404,6 +416,29 @@ BlockClosureTest >> testValueWithArguments [
 			self assert: err calledArgumentsCount equals: 1 ].
 		
 	self should: [ [ :i | 3 + 4 ] valueWithArguments: #(1 2) ] raise: ArgumentsCountMismatch 
+		withExceptionDo: [ :err | 
+			self assert: err expectedArgumentsCount equals: 1.
+			self assert: err calledArgumentsCount equals: 2 ].
+
+]
+
+{ #category : #'tests - evaluating' }
+BlockClosureTest >> testValueWithArgumentsWithOrderedCollection [
+
+	self 
+		shouldnt: [ aBlockContext valueWithArguments: #() asOrderedCollection ] 
+		raise: ArgumentsCountMismatch.
+
+	self 
+		should: [ aBlockContext valueWithArguments: #(1) asOrderedCollection ] 
+		raise: ArgumentsCountMismatch 
+		withExceptionDo: [ :err | 
+			self assert: err expectedArgumentsCount equals: 0.
+			self assert: err calledArgumentsCount equals: 1 ].
+		
+	self 
+		should: [ [ :i | 3 + 4 ] valueWithArguments: #(1 2) asOrderedCollection ] 
+		raise: ArgumentsCountMismatch 
 		withExceptionDo: [ :err | 
 			self assert: err expectedArgumentsCount equals: 1.
 			self assert: err calledArgumentsCount equals: 2 ].

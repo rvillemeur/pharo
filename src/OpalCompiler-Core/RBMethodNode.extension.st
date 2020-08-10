@@ -1,8 +1,15 @@
 Extension { #name : #RBMethodNode }
 
 { #category : #'*OpalCompiler-Core' }
+RBMethodNode >> bcToASTCache [
+	^ bcToASTCache ifNil: [ bcToASTCache := OCBytecodeToASTCache generateForNode: self ]
+]
+
+{ #category : #'*OpalCompiler-Core' }
 RBMethodNode >> compiledMethod [
-	^ self ir compiledMethod
+	compilationContext compiledMethod 
+		ifNil: [ compilationContext compiledMethod: self ir compiledMethod ].
+	^compilationContext compiledMethod
 ]
 
 { #category : #'*OpalCompiler-Core' }
@@ -31,12 +38,12 @@ RBMethodNode >> ensureCachedArgumentNames [
 RBMethodNode class >> errorMethodNode: selector errorMessage: messageText [	
 	| message |
 	message := RBMessageNode 
-		receiver: RBSelfNode new
+		receiver: RBVariableNode selfNode
 		selector: #error: 
 		arguments: {RBLiteralNode value: messageText}.
 	^ self 
 		selector: selector 
-		arguments: ((1 to: selector numArgs) collect: [ :i | RBArgumentNode named: 't' , i asString ]) 
+		arguments: ((1 to: selector numArgs) collect: [ :i | RBVariableNode named: 't' , i asString ]) 
 		body: (RBSequenceNode statements: {message}) 
 ]
 
@@ -67,12 +74,6 @@ RBMethodNode >> generateIR [
 { #category : #'*OpalCompiler-Core' }
 RBMethodNode >> generateWithSource [
 	"Answer a CompiledMethod with source encoded in trailer."
-
-	
-	"for doits, we need to store the source pretty printed from the 
-	AST to get the return and methodName correct"
-	self selector isDoIt ifTrue: [source := self formattedCode].
-	
 	^self generate: (CompiledMethodTrailer new sourceCode: source).
 ]
 
@@ -144,7 +145,7 @@ RBMethodNode >> primitiveFromPragma [
 	pragmas ifNil: [ ^ IRPrimitive null ].
 	^ pragmas
 		detect: [ :each | each isPrimitive ]
-		ifFound: [ :aPragmaPrimitive | aPragmaPrimitive asPrimitive ]
+		ifFound: [ :aPragmaPrimitive | aPragmaPrimitive asIRPrimitive ]
 		ifNone: [ IRPrimitive null ]
 ]
 
@@ -167,7 +168,7 @@ RBMethodNode >> rewriteTempsForContext: aContext [
 
 { #category : #'*OpalCompiler-Core' }
 RBMethodNode >> sourceNodeForPC: anInteger [
-	^(self ir instructionForPC: anInteger) sourceNode
+	^ self bcToASTCache nodeForPC: anInteger
 ]
 
 { #category : #'*OpalCompiler-Core' }

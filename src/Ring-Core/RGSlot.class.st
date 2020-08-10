@@ -1,6 +1,6 @@
 Class {
 	#name : #RGSlot,
-	#superclass : #RGElement,
+	#superclass : #RGVariable,
 	#category : #'Ring-Core-Kernel'
 }
 
@@ -29,6 +29,11 @@ RGSlot >> definitionString [
 		aStream nextPutAll: '#'; nextPutAll: self name]
 ]
 
+{ #category : #testing }
+RGSlot >> isInstanceVariable [
+	^ true
+]
+
 { #category : #'testing types' }
 RGSlot >> isSlot [
 
@@ -46,4 +51,9 @@ RGSlot >> name: aString [
 
 	self parent parent announceDefinitionChangeDuring: [ 
 		super name: aString ].
+]
+
+{ #category : #testing }
+RGSlot >> semanticNodeClass [
+	^RBInstanceVariableNode
 ]

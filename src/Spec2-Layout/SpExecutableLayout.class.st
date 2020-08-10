@@ -24,7 +24,7 @@ SpExecutableLayout >> add: aName withConstraints: aBlock [
 	children at: aName put: constraints
 ]
 
-{ #category : #accessing }
+{ #category : #private }
 SpExecutableLayout >> announceChildAdded: aChildPresenter [
 
 	self presenter ifNotNil: [
@@ -34,7 +34,7 @@ SpExecutableLayout >> announceChildAdded: aChildPresenter [
 			yourself)].
 ]
 
-{ #category : #accessing }
+{ #category : #private }
 SpExecutableLayout >> announceChildRemoved: aChildPresenter [
 
 	self presenter ifNotNil: [
@@ -60,14 +60,6 @@ SpExecutableLayout >> asArray [
 SpExecutableLayout >> asSpLayout [
 	
 	^ self
-]
-
-{ #category : #accessing }
-SpExecutableLayout >> basicAdd: aName withConstraints: aBlock [
-	| constraints |
-	constraints := self constraintsClass new.
-	aBlock value: constraints.
-	children at: aName put: constraints
 ]
 
 { #category : #building }
@@ -166,6 +158,34 @@ SpExecutableLayout >> presenters [
 	^ children keys
 ]
 
+{ #category : #removing }
+SpExecutableLayout >> remove: aPresenter [
+
+	self 
+		remove: aPresenter 
+		ifAbsent: [ self removeBySymbol: aPresenter ].
+	self announceChildRemoved: aPresenter
+]
+
+{ #category : #private }
+SpExecutableLayout >> remove: aPresenter ifAbsent: aBlock [
+
+	^ (children includesKey: aPresenter)
+		ifTrue: [ children removeKey: aPresenter ]
+		ifFalse: aBlock
+]
+
+{ #category : #private }
+SpExecutableLayout >> removeBySymbol: aPresenter [
+	"I will look for the symbol that represents the presenter (in case of layouts defined by symbolic 
+	 representation of presenter) and then I will remove it"
+
+	children keys do: [ :each |
+		each isPresenter ifFalse: [ 
+			(adapter presenter presenterAt: each) = aPresenter ifTrue: [
+				self remove: each ifAbsent: [ NotFound signal: 'Presenter not found.' ] ] ] ]
+]
+
 { #category : #private }
 SpExecutableLayout >> resolvePresenter: presenterNameOrLayout presenter: aPresenter bindings: bindings [
 
@@ -223,4 +243,11 @@ SpExecutableLayout >> whenChildrenRemovedDo: aBlock [
 	self announcer
 		when: SpChildrenRemoved
 		do: aBlock
+]
+
+{ #category : #private }
+SpExecutableLayout >> withAdapterDo: aValuable [
+	"a convenience method to avoid verify by nil all the time"
+	
+	^ adapter ifNotNil: aValuable
 ]

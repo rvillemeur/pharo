@@ -3,7 +3,7 @@ I am the adapter used to bridge a WindowPresenter and a SystemWindow
 "
 Class {
 	#name : #SpMorphicWindowAdapter,
-	#superclass : #SpAbstractMorphicAdapter,
+	#superclass : #SpAbstractMorphicWindowAdapter,
 	#category : #'Spec2-Adapters-Morphic-Base'
 }
 
@@ -22,48 +22,10 @@ SpMorphicWindowAdapter >> aboutTitle [
 		ifFalse: [m class name]].
 ]
 
-{ #category : #private }
-SpMorphicWindowAdapter >> add: containerMorph toWindow: aSpecWindow [
-
-	aSpecWindow 
-		addMorph: containerMorph 
-		fullFrame: LayoutFrame identity
-]
-
-{ #category : #private }
-SpMorphicWindowAdapter >> addContent: aMorph toWindow: aSpecWindow [
-	| containerMorph |
-	
-	containerMorph := self newContainerMorph.
-	containerMorph layoutFrame: aMorph layoutFrame.
-
-	"add all decorations (menu, toolbar and statusbar)"
-	self model hasMenu ifTrue: [ self addMenuTo: containerMorph ].
-	self model hasToolbar ifTrue: [ self addToolBarTo: containerMorph ].
-	containerMorph addMorphBack: aMorph.
-	aMorph
-		hResizing: #spaceFill;
-		vResizing: #spaceFill.
-	self model hasStatusBar ifTrue: [ self addStatusBarTo: containerMorph ].
-	
-	self add: containerMorph toWindow: aSpecWindow
-]
-
 { #category : #initialization }
 SpMorphicWindowAdapter >> addFocusRotationKeyBindings [
 	"Windows should not process keybindings (because then the active widget will not get 
 	 the event"
-]
-
-{ #category : #private }
-SpMorphicWindowAdapter >> addMenuTo: aMorph [
-	| menuMorph |
-
-	menuMorph := self model menu buildWithSpec.
-	aMorph addMorphBack: menuMorph.	
-	menuMorph
-		hResizing: #spaceFill;
-		vResizing: #rigid
 ]
 
 { #category : #'widget API' }
@@ -82,28 +44,6 @@ SpMorphicWindowAdapter >> addPresenterIn: widgetToBuild withSpecLayout: aSpec [
 	self 
 		addContent: (self model presenter buildWithSpecLayout: aSpec) 
 		toWindow: widgetToBuild
-]
-
-{ #category : #private }
-SpMorphicWindowAdapter >> addStatusBarTo: aMorph [
-	| statusBarMorph |
-
-	statusBarMorph := self model statusBar buildWithSpec.
-	aMorph addMorphBack: statusBarMorph.	
-	statusBarMorph
-		hResizing: #spaceFill;
-		vResizing: #rigid
-]
-
-{ #category : #private }
-SpMorphicWindowAdapter >> addToolBarTo: aMorph [
-	| toolbarMorph |
-
-	toolbarMorph := self model toolBar buildWithSpec.
-	aMorph addMorphBack: toolbarMorph.	
-	toolbarMorph
-		hResizing: #spaceFill;
-		vResizing: #rigid
 ]
 
 { #category : #'widget API' }
@@ -143,6 +83,18 @@ SpMorphicWindowAdapter >> centered [
 			position: Display extent - w extent // 2 ]
 ]
 
+{ #category : #'widget API' }
+SpMorphicWindowAdapter >> centeredRelativeTo: aWindowPresenter [ 
+	| bounds position |	
+	
+	self widgetDo: [ :w |
+		bounds := aWindowPresenter 
+			ifNotNil: [ aWindowPresenter adapter widget bounds ]
+			ifNil: [ World bounds ].
+		position := bounds origin + ((bounds extent - w extent) // 2).
+		w position: position ]
+]
+
 { #category : #protocol }
 SpMorphicWindowAdapter >> close [
 
@@ -176,6 +128,20 @@ SpMorphicWindowAdapter >> isDisplayed [
 ]
 
 { #category : #'widget API' }
+SpMorphicWindowAdapter >> isMaximized [
+
+	self widgetDo: [ :w | ^ w isMaximized ].
+	^ false
+]
+
+{ #category : #'widget API' }
+SpMorphicWindowAdapter >> isMinimized [
+
+	self widgetDo: [ :w | ^ w isMinimized ].
+	^ false
+]
+
+{ #category : #'widget API' }
 SpMorphicWindowAdapter >> isResizeable [
 
 	^ self model isResizeable
@@ -204,17 +170,6 @@ SpMorphicWindowAdapter >> maximize [
 SpMorphicWindowAdapter >> minimize [
 
 	self widgetDo: [ :w | w minimize ]
-]
-
-{ #category : #private }
-SpMorphicWindowAdapter >> newContainerMorph [
-		
-	^ PanelMorph new
-		layoutPolicy: TableLayout new; 
-		hResizing: #spaceFill;
-		vResizing: #spaceFill;		
-		listDirection: #topToBottom; 
-		yourself
 ]
 
 { #category : #'widget API' }
@@ -251,7 +206,8 @@ SpMorphicWindowAdapter >> subscribeToAnnouncements: aWindow [
 
 	aWindow announcer 
 		when: SpWindowWillClose send: #announce: to: self presenter announcer;
-		when: WindowResizing send: #announce: to: self presenter announcer
+		when: SpWindowResizing send: #announce: to: self presenter announcer;
+		when: WindowClosed send: #windowClosed to: self
 ]
 
 { #category : #icons }
@@ -268,7 +224,14 @@ SpMorphicWindowAdapter >> title [
 { #category : #'widget API' }
 SpMorphicWindowAdapter >> title: aString [
 
-	self widgetDo: [ :w | w setLabel: aString ]
+	self widgetDo: [ :w | w setLabel: (aString ifNotNil: [ :theString | theString localizedForPresenter: self presenter]) ]
+]
+
+{ #category : #updating }
+SpMorphicWindowAdapter >> windowClosed [
+
+	self windowIsClosing.
+	self presenter windowClosed
 ]
 
 { #category : #updating }
@@ -280,5 +243,5 @@ SpMorphicWindowAdapter >> windowIsClosing [
 { #category : #updating }
 SpMorphicWindowAdapter >> windowIsOpening [
 
-	self model windowIsOpening
+	self presenter windowIsOpening
 ]

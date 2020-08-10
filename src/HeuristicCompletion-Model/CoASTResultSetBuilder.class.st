@@ -37,38 +37,25 @@ CoASTResultSetBuilder >> configureEmptyFetcherForNode: aNode [
 	^ self
 		configureFetcher: CoEmptyFetcher new
 		forNode: aNode
-		narrowingWith: ''
 ]
 
 { #category : #'private-building' }
-CoASTResultSetBuilder >> configureFetcher: aFetcher forNode: aNode narrowingWith: aString [
+CoASTResultSetBuilder >> configureFetcher: aFetcher forNode: aNode [
 	
 	| completion |
 	completion := CoResultSet fetcher: aFetcher.
-	completion filterWithString: aString.
+	completion filterWithString: completionContext completionToken.
 	^ completion
 ]
 
 { #category : #'private-building' }
-CoASTResultSetBuilder >> configureFetcherForNode: aNode usingHeuristic: heuristic narrowingWith: aString [
-	
-	| fetcher |
-	fetcher := heuristic fetcherFor: aNode inContext: completionContext.
-	^ self
-		configureFetcher: fetcher
-		forNode: aNode
-		narrowingWith: aString
-]
-
-{ #category : #'private-building' }
-CoASTResultSetBuilder >> configureFetcherForNode: aNode usingHeuristicAvoidingRepetitions: heuristic narrowingWith: aString [
+CoASTResultSetBuilder >> configureFetcherForNode: aNode usingHeuristicAvoidingRepetitions: heuristic [
 	
 	| fetcher |
 	fetcher := heuristic fetcherFor: aNode inContext: completionContext.
 	^ self
 		configureFetcher: fetcher withoutRepetition
 		forNode: aNode
-		narrowingWith: aString
 ]
 
 { #category : #accessing }
@@ -147,6 +134,12 @@ CoASTResultSetBuilder >> visitParseErrorNode: aRBParseErrorNode [
 ]
 
 { #category : #visiting }
+CoASTResultSetBuilder >> visitPragmaNode: aRBPragmaNode [
+
+	^ self visitNode: aRBPragmaNode
+]
+
+{ #category : #visiting }
 CoASTResultSetBuilder >> visitReturnNode: aRBReturnNode [ 
 	
 	^ self visitNode: aRBReturnNode
@@ -168,6 +161,12 @@ CoASTResultSetBuilder >> visitSequenceNode: aRBSequenceNode [
 CoASTResultSetBuilder >> visitSuperNode: aRBSuperNode [ 
 	
 	^ self visitNode: aRBSuperNode
+]
+
+{ #category : #visiting }
+CoASTResultSetBuilder >> visitThisContextNode: aRBThisContextNode [
+
+	^ self visitNode: aRBThisContextNode
 ]
 
 { #category : #visiting }

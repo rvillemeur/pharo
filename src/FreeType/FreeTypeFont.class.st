@@ -96,6 +96,17 @@ FreeTypeFont >> characterFormAt: aCharacter [
 				subpixelPosition: 0]
 ]
 
+{ #category : #'glyph lookup' }
+FreeTypeFont >> characterRenderingOptimizedFormAt: aCharacter [
+	FreeTypeSettings current useSubPixelAntiAliasing ifFalse: [ ^ super characterRenderingOptimizedFormAt: aCharacter ].
+	
+	^ (self 
+		glyphOf: aCharacter 
+		destDepth: 32 
+		colorValue: (Color white pixelValueForDepth: 32)
+		subpixelPosition: 0) withAlphaExtractedFromSubpixelRendering
+]
+
 { #category : #accessing }
 FreeTypeFont >> clearCachedMetrics [
 	widthAndKernedWidthCache := cachedHeight := cachedAscent := cachedDescent := subPixelPositioned := nil
@@ -422,22 +433,6 @@ FreeTypeFont >> glyphOf: aCharacter destDepth: destDepth colorValue: aColorValue
 						subpixelPosition: validSub]]
 ]
 
-{ #category : #preview }
-FreeTypeFont >> gtInspectorFontIn: composite [
-	<gtInspectorPresentationOrder: 0>
-	composite morph
-		title: 'Font';
-		display: [ :x | | pane |
-			pane := ScrollPane new
-						alwaysShowScrollBars: true;
-						yourself.
-			pane scroller addMorph:
-					((String streamContents: [ :s | 22 to: 255 do: [ :idx | s nextPut: idx asCharacter ] ]) asMorph
-						font: x;
-						yourself).
-			pane ]
-]
-
 { #category : #testing }
 FreeTypeFont >> hasDistinctGlyphsForAll: asciiString [
 	"Answer true if the receiver has glyphs for all the characters
@@ -467,6 +462,11 @@ FreeTypeFont >> hasGlyphsForAll: asciiString [
 		(self face ffiGetCharIndex: c asInteger) = 0
 			ifTrue:[^false]].
 	^true
+]
+
+{ #category : #testing }
+FreeTypeFont >> hasSubPixelAntiAliasing [
+	^ FreeTypeSettings current useSubPixelAntiAliasing
 ]
 
 { #category : #comparing }
@@ -786,6 +786,16 @@ FreeTypeFont >> simulatedItalicSlant [
 	^0
 ]
 
+{ #category : #metrics }
+FreeTypeFont >> strikeoutThickness [
+	^ self underlineThickness
+]
+
+{ #category : #metrics }
+FreeTypeFont >> strikeoutTop [
+	^ (((self face ascender / 4) * self pixelSize / self face unitsPerEm) negated - (self strikeoutThickness/2)) rounded.
+]
+
 { #category : #'glyph lookup' }
 FreeTypeFont >> subGlyphOf: aCharacter colorValue: aColorValue mono: monoBoolean subpixelPosition: sub [
 
@@ -814,6 +824,16 @@ FreeTypeFont >> subPixelPositioned [
 		ifNil:[
 			settings := FreeTypeSettings current.
 			subPixelPositioned := settings hinting not or:[settings lightHinting]]
+]
+
+{ #category : #metrics }
+FreeTypeFont >> underlineThickness [
+	^ self face underlineThickness * self pixelSize / self face unitsPerEm.
+]
+
+{ #category : #metrics }
+FreeTypeFont >> underlineTop [
+	^ ((self face underlinePosition * self pixelSize / self face unitsPerEm) negated - (self underlineThickness/2)) rounded + 1 "needs the +1 , possibly because glyph origins are moved down by 1 so that their baselines line up with strike fonts"
 ]
 
 { #category : #validation }

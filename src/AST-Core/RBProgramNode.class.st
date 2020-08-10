@@ -93,6 +93,13 @@ RBProgramNode >> allChildren [
 ]
 
 { #category : #accessing }
+RBProgramNode >> allComments [
+	"Answer a collection of objects representing the comments in the method. Return an empty collection if the method's source code does not contain a comment."
+
+	^ self allChildren flatCollect: [:el| el comments]
+]
+
+{ #category : #accessing }
 RBProgramNode >> allDefinedVariables [
 	| children |
 	children := self children.
@@ -102,6 +109,28 @@ RBProgramNode >> allDefinedVariables [
 			[:vars :each | 
 			vars
 				addAll: each allDefinedVariables;
+				yourself]
+]
+
+{ #category : #accessing }
+RBProgramNode >> allParents [
+	"return all my parents. 
+	See discussion in issue https://github.com/pharo-project/pharo/issues/6278"
+	^ parent 
+		ifNil: [ OrderedCollection new ]
+		ifNotNil: [ parent withAllParents ]
+]
+
+{ #category : #accessing }
+RBProgramNode >> allStatements [
+	| children |
+	children := self children.
+	children isEmpty ifTrue: [^#()].
+	^children inject: OrderedCollection new
+		into: 
+			[:vars :each | 
+			vars
+				addAll: each allStatements;
 				yourself]
 ]
 
@@ -373,17 +402,17 @@ RBProgramNode >> hashForCollection: aCollection [
 
 { #category : #querying }
 RBProgramNode >> instanceVariableNodes [
-		^self variableNodes select: [:each | each isInstance]
+		^self variableNodes select: [:each | each isInstanceVariable]
 ]
 
 { #category : #querying }
 RBProgramNode >> instanceVariableReadNodes [
-		^self variableReadNodes select: [:each | each isInstance]
+		^self variableReadNodes select: [:each | each isInstanceVariable]
 ]
 
 { #category : #querying }
 RBProgramNode >> instanceVariableWriteNodes [
-		^self variableWriteNodes select: [:each | each isInstance]
+		^self variableWriteNodes select: [:each | each isInstanceVariable]
 ]
 
 { #category : #testing }
@@ -394,19 +423,21 @@ RBProgramNode >> intersectsInterval: anInterval [
 
 { #category : #testing }
 RBProgramNode >> isArgument [
+	self 
+		deprecated: 'Use #isArgumentVariable instead.' 
+		transformWith: '`@receiver isArgument' -> '`@receiver isArgumentVariable'.
+	
+	^ self isArgumentVariable
+]
+
+{ #category : #testing }
+RBProgramNode >> isArgumentVariable [
 	^false
 ]
 
 { #category : #testing }
 RBProgramNode >> isAssignment [
 	^false
-]
-
-{ #category : #testing }
-RBProgramNode >> isBlockVar [
-	"true if a variable node is defined by a block"
-
-	^ false
 ]
 
 { #category : #testing }
@@ -512,6 +543,11 @@ RBProgramNode >> isSelfOrSuper [
 ]
 
 { #category : #testing }
+RBProgramNode >> isSelfVariable [
+	^ false
+]
+
+{ #category : #testing }
 RBProgramNode >> isSequence [
 	^false
 ]
@@ -522,12 +558,17 @@ RBProgramNode >> isSuper [
 ]
 
 { #category : #testing }
+RBProgramNode >> isSuperVariable [
+	^false
+]
+
+{ #category : #testing }
 RBProgramNode >> isTemp [
 	^ false
 ]
 
 { #category : #testing }
-RBProgramNode >> isThisContext [
+RBProgramNode >> isThisContextVariable [
 	^ false
 ]
 
@@ -627,11 +668,6 @@ RBProgramNode >> matchList: matchNodes index: matchIndex against: programNodes i
 ]
 
 { #category : #accessing }
-RBProgramNode >> methodComments [
-	^self comments
-]
-
-{ #category : #accessing }
 RBProgramNode >> methodNode [
 	^parent ifNotNil: [parent methodNode]
 ]
@@ -675,12 +711,13 @@ RBProgramNode >> parent: aRBProgramNode [
 
 { #category : #accessing }
 RBProgramNode >> parents [
-	^ parent 
-		ifNil: [ OrderedCollection with: self ]
-		ifNotNil: [ 
-			parent parents
-				addLast: self;
-				yourself ]
+	"see discussion in https://github.com/pharo-project/pharo/issues/6278"
+		self
+		deprecated: 'Use #withAllParents instead'
+		on: '25 may 2020'
+		in: #Pharo9
+		transformWith: '`@receiver parents' 
+						-> '`@receiver withALlParents'.
 ]
 
 { #category : #copying }
@@ -962,4 +999,16 @@ RBProgramNode >> whoDefines: aName [
 	^(self defines: aName) 
 		ifTrue: [self]
 		ifFalse: [parent notNil ifTrue: [parent whoDefines: aName] ifFalse: [nil]]
+]
+
+{ #category : #accessing }
+RBProgramNode >> withAllParents [
+	"return me and all my parents. Topmost parent first, me last
+	See discussion in issue https://github.com/pharo-project/pharo/issues/6278"
+	^ parent 
+		ifNil: [ OrderedCollection with: self ]
+		ifNotNil: [ 
+			parent withAllParents 
+				addLast: self;
+				yourself ]
 ]

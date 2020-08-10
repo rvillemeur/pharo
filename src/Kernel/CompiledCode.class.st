@@ -72,15 +72,38 @@ CompiledCode >> = aCompiledMethod [
 ]
 
 { #category : #scanning }
+CompiledCode >> accessesField: varIndex [
+	"Answer whether the receiver accesses the instance variable indexed by the argument."
+
+	^ (self readsField: varIndex) or: [ self writesField: varIndex ]
+]
+
+{ #category : #scanning }
+CompiledCode >> accessesRef: literalVariable [
+	"Answer whether this method accesses the LiteralVariable"
+	"we do not need to call readsRef: or #writesRef:, as if the variable 
+	is stored as a Literal, it will be accessed. This check is much faster"
+
+	^ self hasLiteral: literalVariable
+]
+
+{ #category : #scanning }
 CompiledCode >> accessesSlot: aSlot [
 	^aSlot isAccessedIn: self
 	
 ]
 
-{ #category : #literals }
-CompiledCode >> additionalMethodStateRefersToLiteral: literal [
-	^ self penultimateLiteral isMethodProperties
-		and: [ self penultimateLiteral refersToLiteral: literal ]
+{ #category : #accessing }
+CompiledCode >> addWithAllBlocksInto: collected [
+
+	(collected includes: self) ifTrue: [ ^ collected ].
+	collected add: self.
+
+	self literals 
+		select: [ :aLiteral | aLiteral isCompiledBlock ] 
+		thenDo: [ :aLiteral | aLiteral addWithAllBlocksInto: collected ].
+		
+	^ collected
 ]
 
 { #category : #literals }
@@ -162,7 +185,7 @@ CompiledCode >> comment [
 	"Return the first comment of the receiver"
 	"(self>>#comment) comment"
 	
-	^ self methodClass firstPrecodeCommentFor: self selector
+	^ self ast firstPrecodeComment
 ]
 
 { #category : #testing }
@@ -222,27 +245,24 @@ CompiledCode >> frameSize [
 { #category : #literals }
 CompiledCode >> hasLiteral: literal [
 	"Answer whether the receiver references the argument, literal."
-	2 to: self numLiterals - 1 do: "exclude superclass + selector/properties"
+	1 to: self numLiterals - self literalsToSkip do: "exclude superclass + selector/properties"
 		[:index |
 		| lit |
-		((lit := self objectAt: index) literalEqual: literal) ifTrue: [^true].
-		(lit isMemberOf: CompiledBlock) ifTrue: [ (lit hasLiteral: literal) ifTrue: [ ^true ] ]].
+		((lit := self literalAt: index) literalEqual: literal) ifTrue: [^true].
+		lit isCompiledBlock ifTrue: [ (lit hasLiteral: literal) ifTrue: [ ^true ] ]].
 	^false
 ]
 
 { #category : #literals }
 CompiledCode >> hasLiteralSuchThat: litBlock [
 	"Answer true if litBlock returns true for any literal in this method, even if embedded in array structure."
-	(self penultimateLiteral isMethodProperties
-	 and: [self penultimateLiteral hasLiteralSuchThat: litBlock]) ifTrue:
-		[^true].
-	2 to: self numLiterals - 1 do: "exclude header and methodClass or outerCode"
+	1 to: self numLiterals - self literalsToSkip do: "exclude header and methodClass or outerCode"
 		[:index | | lit |
-		lit := self objectAt: index.
+		lit := self literalAt: index.
 		((litBlock value: lit)
 		or: [lit isArray and: [lit hasLiteralSuchThat: litBlock]]) ifTrue:
 			[^true].
-		(lit isMemberOf: CompiledBlock) ifTrue: [ (lit hasLiteralSuchThat: litBlock) ifTrue: [ ^true ] ]].
+		lit isCompiledBlock ifTrue: [ (lit hasLiteralSuchThat: litBlock) ifTrue: [ ^true ] ]].
 	^false
 ]
 
@@ -272,11 +292,17 @@ CompiledCode >> hasSelector: selector specialSelectorIndex: specialOrNil [
 	"Answers true if the method refers to the selector.
 	 If you don't know what's a special selector, use #hasSelector:.
 	 If you do, you may call this method directly to avoid recomputing 
-	 the special selector index all the time."
-	 (self refersToLiteral: selector) ifTrue: [ ^ true ].
-	^ specialOrNil 
-		ifNil: [ false ] 
-		ifNotNil: [ self scanFor: self encoderClass firstSpecialSelectorByte + specialOrNil ]
+	 the special selector index all the time.
+	
+	 I traverse the method and all the compiled blocks in the literals"
+
+	
+	(self refersToLiteral: selector) ifTrue: [ ^ true ].
+	"refersToLiteral: traverses all blocks, but only for non-special literals"
+	specialOrNil ifNil: [ ^ false ].
+	"if the selector is special, scan all blocks and myself"
+	^ self withAllBlocks anySatisfy: [ :aCompiledCode | aCompiledCode scanFor:
+			self encoderClass firstSpecialSelectorByte + specialOrNil ]
 ]
 
 { #category : #accessing }
@@ -343,10 +369,10 @@ CompiledCode >> headerDescription [
 { #category : #literals }
 CompiledCode >> indexOfLiteral: literal [
 	"Answer the literal index of the argument, literal, or zero if none."
-	2 to: self numLiterals - 1 "exclude superclass + selector/properties"
+	1 to: self numLiterals - self literalsToSkip "exclude superclass + selector/properties"
 	   do:
 		[:index |
-		literal == (self objectAt: index) ifTrue: [^index - 1]].
+		literal == (self literalAt: index) ifTrue: [^index]].
 	^0
 ]
 
@@ -366,10 +392,10 @@ CompiledCode >> innerCompiledBlocksAnySatisfy: aBlock [
 { #category : #literals }
 CompiledCode >> innerCompiledBlocksDo: aBlock [
 	"We ignore the enclosing compiled code in compiled block by ignoring the last literal"
-	1 to: self numLiterals - 1 do:
+	1 to: self numLiterals - self literalsToSkip do:
 		[:index | | lit |
-		lit := self objectAt: index + 1.
-		(lit isMemberOf: CompiledBlock) ifTrue: [ aBlock value: lit ] ]
+		lit := self literalAt: index.
+		lit isCompiledBlock ifTrue: [ aBlock value: lit ] ]
 ]
 
 { #category : #testing }
@@ -377,11 +403,6 @@ CompiledCode >> isCollection [
 	"We should override it because most of collection methods are not working for CompiledMethod. It is special class which needs to be ByteArray by VM. But it is not behaves like ByteArray from user perspective.
 	And some tools uses isCollection check for specific behaviour which will fail for CompiledMethod"
 	^false
-]
-
-{ #category : #testing }
-CompiledCode >> isCompiledBlock [
-	^ false
 ]
 
 { #category : #testing }
@@ -414,6 +435,13 @@ CompiledCode >> isQuick [
 { #category : #testing }
 CompiledCode >> isRealPrimitive [
 	^self isPrimitive and: [ self isQuick not ]
+]
+
+{ #category : #testing }
+CompiledCode >> isReturnSelf [
+	"Answer whether the receiver is a quick return of self."
+
+	^ self primitive = 256
 ]
 
 { #category : #accessing }
@@ -458,7 +486,7 @@ CompiledCode >> literals [
 	"Answer an Array of the literals referenced by the receiver.	
 	 Exclude superclass + selector/properties"
 	| literals numberLiterals |
-	literals := Array new: (numberLiterals := self numLiterals - self numberOfReservedLiterals).
+	literals := Array new: (numberLiterals := self numLiterals - self literalsToSkip).
 	1 to: numberLiterals do: [:index |
 		literals at: index put: (self objectAt: index + 1)].
 	^literals
@@ -473,8 +501,14 @@ CompiledCode >> literalsAt: anIndex [
 { #category : #literals }
 CompiledCode >> literalsDo: aBlock [
 	"Evaluate aBlock for each of the literals referenced by the receiver."
-	1 to: self numLiterals do:
+	1 to: self numLiterals - self literalsToSkip do:
 		[:index | aBlock value: (self literalAt: index)]
+]
+
+{ #category : #literals }
+CompiledCode >> literalsToSkip [
+
+	^ self subclassResponsibility
 ]
 
 { #category : #scanning }
@@ -485,6 +519,16 @@ CompiledCode >> localReadsRef: literalAssociation [
 		[^false].
 	litIndex := litIndex - 1.
 	^(scanner := InstructionStream on: self) scanFor: (self encoderClass bindingReadScanBlockFor: litIndex using: scanner)
+]
+
+{ #category : #scanning }
+CompiledCode >> localReadsSelf [
+	^ self encoderClass readsSelfFor: self
+]
+
+{ #category : #scanning }
+CompiledCode >> localReadsThisContext [
+	^ self encoderClass readsThisContextFor: self
 ]
 
 { #category : #testing }
@@ -575,12 +619,6 @@ CompiledCode >> numTemps [
 	^ (self header bitShift: -18) bitAnd: 16r3F
 ]
 
-{ #category : #accessing }
-CompiledCode >> numberOfReservedLiterals [
-
-	^ self subclassResponsibility
-]
-
 { #category : #literals }
 CompiledCode >> objectAt: index [ 
 	"Primitive. Answer the method header (if index=1) or a literal (if index 
@@ -605,8 +643,13 @@ CompiledCode >> objectAt: index put: value [
 ]
 
 { #category : #accessing }
-CompiledCode >> penultimateLiteral [
-	^ self subclassResponsibility
+CompiledCode >> origin [
+	^ self methodClass findOriginClassOf: self method
+]
+
+{ #category : #accessing }
+CompiledCode >> originMethod [
+	^ self methodClass findOriginMethodOf: self method
 ]
 
 { #category : #accessing }
@@ -658,8 +701,23 @@ CompiledCode >> readsRef: literalAssociation [
 ]
 
 { #category : #scanning }
+CompiledCode >> readsSelf [
+	"Answer whether compiledMethod reads self, look into embedded blocks, too"
+	self isReturnSelf ifTrue: [ ^ true ].
+	self localReadsSelf ifTrue: [ ^ true ].
+	^ self innerCompiledBlocksAnySatisfy: [ :cb | cb readsSelf]
+]
+
+{ #category : #scanning }
 CompiledCode >> readsSlot: aSlot [
 	^aSlot isReadIn: self
+]
+
+{ #category : #scanning }
+CompiledCode >> readsThisContext [
+	"Answer whether compiledMethod reads thisContext, look into embedded blocks, too"
+	self localReadsThisContext ifTrue: [ ^ true ].
+	^ self innerCompiledBlocksAnySatisfy: [ :cb | cb readsThisContext]
 ]
 
 { #category : #accessing }
@@ -680,17 +738,14 @@ CompiledCode >> referredInstVars [
 	"Dictionary fromPairs: (Point selectors collect: [:s| { s. (Point >> s) referredInstVars}])".
 ]
 
-{ #category : #literals }
+{ #category : #testing }
 CompiledCode >> refersToLiteral: aLiteral [
 	"Answer true if any literal in this method is literal,
 	even if embedded in array structure."
 
-	(self additionalMethodStateRefersToLiteral: aLiteral)
-		ifTrue: [ ^ true ].
-
-	"exclude selector or additional method state (penultimate slot) 
-	and methodClass or outerCode (last slot)"
-	1 to: self numLiterals - 2 do: [ :index | 
+	1 to: self numLiterals - self literalsToSkip do: [ :index | 
+		"exclude selector or additional method state (penultimate slot) 
+		and methodClass or outerCode (last slot)"
 		((self literalAt: index) refersToLiteral: aLiteral)
 			ifTrue: [ ^ true ] ].
 
@@ -876,6 +931,22 @@ CompiledCode >> voidCogVMState [
 
 	<primitive: 215>
 	^self flushCache
+]
+
+{ #category : #accessing }
+CompiledCode >> withAllBlocks [
+
+	^ self addWithAllBlocksInto: IdentitySet new.
+]
+
+{ #category : #accessing }
+CompiledCode >> withAllNestedLiteralsDo: aBlockClosure [ 
+	"This method traverses all the nested literals.
+	As a Block or Method can have literals in the nested blocks. 
+	This is used to query all the selectors used in a method for example"
+	
+	self withAllBlocks do: [ :aCompiledCode | 
+		aCompiledCode allLiterals do: aBlockClosure ]
 ]
 
 { #category : #scanning }

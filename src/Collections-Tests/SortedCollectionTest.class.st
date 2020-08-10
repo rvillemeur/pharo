@@ -27,7 +27,7 @@ Class {
 		'collectionOfString',
 		'stringCollectionSameEndAndBegining'
 	],
-	#category : #'Collections-Tests-Unordered'
+	#category : #'Collections-Tests-Sequenceable'
 }
 
 { #category : #requirements }
@@ -711,6 +711,19 @@ SortedCollectionTest >> testIndexOfSubCollectionStartingAtIfAbsent [
 		startingAt: 2
 		ifAbsent: [ absent := true ].
 	self assert: absent equals: true
+]
+
+{ #category : #'tests - set arithmetic' }
+SortedCollectionTest >> testIntersection [
+	| sortedCollection anotherCollection intersection |
+	sortedCollection := { Number . Object . Collection } asSortedCollection: [ :a :b | a name > b name ].
+	anotherCollection := { Number . Object }.
+
+	intersection := sortedCollection intersection: anotherCollection.
+	
+	self assert: (intersection isKindOf: SortedCollection).
+	self deny: intersection sortBlock isNil.
+	self assert: intersection asArray equals: { Object . Number }.
 ]
 
 { #category : #'tests - index access' }

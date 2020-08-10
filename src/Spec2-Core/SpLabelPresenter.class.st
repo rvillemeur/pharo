@@ -8,6 +8,11 @@ Examples:
 > self example
 
 NOTE: In the future, it should be possible to attach another widget to a label, but for now it is not implementes.
+
+@@TODO
+
+!! Transmissions
+- #inputLabelPort (default)
 "
 Class {
 	#name : #SpLabelPresenter,
@@ -70,6 +75,14 @@ SpLabelPresenter >> label: aText [
 	"Set the text of the label"
 
 	label := aText
+]
+
+{ #category : #localization }
+SpLabelPresenter >> localeChanged [
+
+	super localeChanged.
+	self forceUpdateSlot: #label
+		
 ]
 
 { #category : #'api-events' }

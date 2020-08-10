@@ -432,12 +432,6 @@ RGBehavior >> defaultTraitComposition [
 	^ self defaultTraitCompositionStubIn: self.
 ]
 
-{ #category : #'accessing - definition' }
-RGBehavior >> definitionForNautilus [
-
-	^ self definition
-]
-
 { #category : #'queries - methods' }
 RGBehavior >> ensureLocalMethodNamed: aSymbol [
 
@@ -551,6 +545,13 @@ RGBehavior >> initializeUnresolved [
 
 ]
 
+{ #category : #'queries - testing' }
+RGBehavior >> isAccessedIn: anRGMethod [
+	^ (anRGMethod ast variableNodes select: [ :each | 
+		   each isGlobalVariable ]) anySatisfy: [ :each | 
+		  each name = self name ]
+]
+
 { #category : #testing }
 RGBehavior >> isBehavior [
 
@@ -597,12 +598,6 @@ RGBehavior >> isImmediateClass [
 RGBehavior >> isPointers [
 
 	^ self isBits not
-]
-
-{ #category : #'queries - testing' }
-RGBehavior >> isReferencedIn: anRGMethod [ 
-
-	^ (anRGMethod ast variableNodes select: #isGlobal) anySatisfy: [ :each | each name = self name ] 
 ]
 
 { #category : #'queries - testing' }
@@ -670,7 +665,7 @@ RGBehavior >> localMethodsSet [
 { #category : #'queries - methods' }
 RGBehavior >> localSelectors [
 
-	^ self localMethods collect: #name
+	^ self localMethods collect: [ :each | each name ]
 ]
 
 { #category : #resolving }
@@ -738,7 +733,7 @@ RGBehavior >> name: aString [
 	
 	oldName := self name.
 	
-	subclassesWithOldDefinitions := (self subclasses reject: #isMeta) collect: [ :each | 
+	subclassesWithOldDefinitions := (self subclasses reject: [:each | each isMeta]) collect: [ :each | 
 		each -> each copyForBehaviorDefinition ].
 	
 	self announceDefinitionChangeDuring: [ 
@@ -1019,7 +1014,7 @@ RGBehavior >> removeProtocol: aSymbol [
 { #category : #'queries - methods' }
 RGBehavior >> selectors [
 
-	^ self methods collect: #name
+	^ self methods collect: [ :each | each name ]
 ]
 
 { #category : #'accessing - definition' }
@@ -1172,7 +1167,7 @@ RGBehavior >> unresolveName [
 	
 	oldName := self name.
 	
-	subclassesWithOldDefinitions := (self subclasses reject: #isMeta) collect: [ :each | 
+	subclassesWithOldDefinitions := (self subclasses reject: [:each | each isMeta]) collect: [ :each | 
 		each -> each copyForBehaviorDefinition ].
 	
 	self announceDefinitionChangeDuring: [ 

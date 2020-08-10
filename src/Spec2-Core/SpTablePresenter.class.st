@@ -4,6 +4,12 @@ See AbstractWidgetPresenter
 
 self example
 
+@@TODO
+
+!! Transmissions
+- #inputItemsPort (default)
+- #outputSelectionPort (default)
+- #outputActivationPort
 "
 Class {
 	#name : #SpTablePresenter,
@@ -44,6 +50,11 @@ SpTablePresenter >> beNotResizable [
 { #category : #api }
 SpTablePresenter >> beResizable [
 	self isResizable: true
+]
+
+{ #category : #emulating }
+SpTablePresenter >> clickOnColumnHeaderAt: anIndex [
+	self withAdapterDo: [ :tableAdapter | tableAdapter clickOnColumnHeaderAt: anIndex ]
 ]
 
 { #category : #accessing }

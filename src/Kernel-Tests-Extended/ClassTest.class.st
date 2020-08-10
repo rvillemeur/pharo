@@ -166,8 +166,8 @@ ClassTest >> testCompileAll [
 
 { #category : #'tests - dependencies' }
 ClassTest >> testDependencies [
-	self assert: (ClassTest dependentClasses includes: ClassTest superclass).
-	self assert: (ClassTest dependentClasses includes: Date)
+	self assert: (self class dependentClasses includes: self class superclass).
+	self assert: (self class dependentClasses includes: Date)
 ]
 
 { #category : #accessing }
@@ -178,6 +178,15 @@ ClassTest >> testEnvironment [
 { #category : #accessing }
 ClassTest >> testEnvironment: anObject [
 	testEnvironment := anObject
+]
+
+{ #category : #tests }
+ClassTest >> testHasBindingThatBeginsWith [
+	self assert: (SmalltalkImage hasBindingThatBeginsWith: 'Compiler').
+	self deny: (SmalltalkImage hasBindingThatBeginsWith: 'Object').
+	
+	"Pools are looked up, too"
+	self assert: (TimeZone hasBindingThatBeginsWith: 'DaysInMo')
 ]
 
 { #category : #'tests - access' }
@@ -328,7 +337,8 @@ ClassTest >> testPoolVariableAccessibleInSubclassOfClassUser [
 ClassTest >> testReferencedClasses [
 	{(ExceptionTester -> { MyTestNotification. Warning. String. MyResumableTestError. OrderedCollection. MyTestError}). 
 	 (CollectionCombinator -> {Array}).
-	 (ExecutionEnvironmentStub -> {OrderedCollection})
+	 (ExecutionEnvironmentStub -> {OrderedCollection}).
+	 (ReferencedClassesTestClass -> {Array. OrderedCollection. Object})
 	}
 		do: [ :assoc | 
 			self assert: assoc key referencedClasses notEmpty.

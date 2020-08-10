@@ -41,7 +41,7 @@ MetalinkTargetResolver class >> classVariableNamed: aClassVariableName for: aCla
 MetalinkTargetResolver class >> classVariableNamed: aClassVariableName for: aClassOrObject option: option [
 	| var |
 	var := self lookupClassVariableNamed: aClassVariableName asSymbol in: aClassOrObject.
-	^ self resolveASTLookupFor: var option: option
+	^ (var accessingNodesFor: option) asIdentitySet
 ]
 
 { #category : #resolving }
@@ -76,20 +76,6 @@ MetalinkTargetResolver class >> methodNamed: aMethodName for: aClassOrObject [
 	^ self lookupASTForMethodNamed: aMethodName asSymbol in: aClassOrObject
 ]
 
-{ #category : #resolving }
-MetalinkTargetResolver class >> resolveASTLookupFor: varOrSlot option: option [
-	^ (self resolvingBlocForOption: option) value: varOrSlot
-]
-
-{ #category : #'resolving - private' }
-MetalinkTargetResolver class >> resolvingBlocForOption: option [
-	option = #write
-		ifTrue: [ ^ [ :varOrSlot | varOrSlot assignmentNodes asIdentitySet  ] ].
-	option = #read
-		ifTrue: [ ^ [ :varOrSlot | varOrSlot readNodes asIdentitySet] ].
-	^ [ :varOrSlot | (OrderedCollection with: varOrSlot assignmentNodes with: varOrSlot readNodes) flattened asIdentitySet ]
-]
-
 { #category : #api }
 MetalinkTargetResolver class >> slotNamed: aSlotName for: aClassOrObject [
 	^ self lookupSlotNamed: aSlotName asSymbol in: aClassOrObject
@@ -99,13 +85,13 @@ MetalinkTargetResolver class >> slotNamed: aSlotName for: aClassOrObject [
 MetalinkTargetResolver class >> slotNamed: aSlotName for: aClassOrObject option: option [
 	| slot |
 	slot := self lookupSlotNamed: aSlotName asSymbol in: aClassOrObject.
-	^ self resolveASTLookupFor: slot option: option
+	^ (slot accessingNodesFor: option) asIdentitySet
 ]
 
 { #category : #api }
 MetalinkTargetResolver class >> slotOrVarNodesFor: slotOrVar inMethod: method option: option [
 	| nodes |
-	nodes := (self resolvingBlocForOption: option) value: slotOrVar.
+	nodes := (slotOrVar accessingNodesFor: option) asIdentitySet.
 	^ nodes select: [ :node | node methodNode method = method ]
 ]
 
@@ -118,5 +104,5 @@ MetalinkTargetResolver class >> temporaryNamed: aTempVarName inMethod: aMethodNa
 MetalinkTargetResolver class >> temporaryNamed: aTempVarName inMethod: aMethodName for: aClassOrObject option: option [
 	| temp |
 	temp := self lookupTemporaryNamed: aTempVarName asSymbol inMethod: aMethodName for: aClassOrObject.
-	^ self resolveASTLookupFor: temp option: option
+	^ (temp accessingNodesFor: option) asIdentitySet
 ]

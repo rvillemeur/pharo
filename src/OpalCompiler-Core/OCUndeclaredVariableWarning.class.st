@@ -73,14 +73,12 @@ OCUndeclaredVariableWarning >> declareTempAndPaste: name [
 { #category : #correcting }
 OCUndeclaredVariableWarning >> declareUndefined [
 
-	Undeclared add: (UndeclaredVariable named: node name asSymbol).
-	^OCUndeclaredVariable new name: node name asSymbol
+	^UndeclaredVariable registeredWithName: node name
 ]
 
 { #category : #correcting }
 OCUndeclaredVariableWarning >> defaultAction [
 	| varName className selector |
-	
  	className  :=  self methodClass name .
 	selector := self methodNode selector. 
 	varName := node name.
@@ -89,9 +87,7 @@ OCUndeclaredVariableWarning >> defaultAction [
 		ifNotNil: [className, '>>', selector]
 			ifNil: ['<unknown>']).
 
-	^super defaultAction ifNil: [
-		Undeclared add: (UndeclaredVariable named: varName asSymbol).
-		OCUndeclaredVariable new name: varName asSymbol]
+	^super defaultAction ifNil: [ self declareUndefined ]
 ]
 
 { #category : #correcting }
@@ -214,13 +210,12 @@ OCUndeclaredVariableWarning >> possibleVariablesFor: proposedVariable [
 	| results class |
 	class := node methodNode methodClass .
 	
-	results := proposedVariable correctAgainst: node temporaryVariables
+	results := proposedVariable correctAgainst: node methodOrBlockNode scope allTempNames 
 								continuedFrom: nil.
 	proposedVariable first canBeGlobalVarInitial ifTrue:
 		[ results := class possibleVariablesFor: proposedVariable
 						continuedFrom: results ].
-	^ proposedVariable correctAgainst: nil continuedFrom: results.
-
+	^ proposedVariable correctAgainst: nil continuedFrom: results
 ]
 
 { #category : #correcting }

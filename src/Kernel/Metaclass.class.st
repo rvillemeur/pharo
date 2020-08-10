@@ -159,6 +159,12 @@ Metaclass >> environment [
 	^thisClass environment
 ]
 
+{ #category : #testing }
+Metaclass >> hasBindingThatBeginsWith: aString [
+	"class and pool vars are accessible from the class side the same as the instance side"
+	^self instanceSide hasBindingThatBeginsWith: aString
+]
+
 { #category : #'accessing parallel hierarchy - deprecated' }
 Metaclass >> hasClassSide [
 	^ false
@@ -216,6 +222,12 @@ Metaclass >> isObsolete [
 	^self soleInstance == nil "Either no thisClass"
 		or:[self soleInstance classSide ~~ self "or I am not the class of thisClass"
 			or:[self soleInstance isObsolete]] "or my instance is obsolete"
+]
+
+{ #category : #testing }
+Metaclass >> isReferenced [
+	"Metaclasses are never directly referenced in code"
+	^false
 ]
 
 { #category : #testing }

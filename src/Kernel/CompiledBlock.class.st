@@ -27,6 +27,12 @@ CompiledBlock >> hasPragmaNamed: aSymbol [
 	^ false
 ]
 
+{ #category : #properties }
+CompiledBlock >> hasProperty: aString [ 
+	
+	^ false
+]
+
 { #category : #testing }
 CompiledBlock >> hasSourceCode [
 	^ self method hasSourceCode
@@ -59,8 +65,20 @@ CompiledBlock >> isCompiledBlock [
 ]
 
 { #category : #testing }
+CompiledBlock >> isInstalled [
+	
+	^ self method isInstalled
+]
+
+{ #category : #testing }
 CompiledBlock >> isTestMethod [
 	^ false
+]
+
+{ #category : #literals }
+CompiledBlock >> literalsToSkip [
+
+	^ 1
 ]
 
 { #category : #accessing }
@@ -81,12 +99,6 @@ CompiledBlock >> methodNode [
 ]
 
 { #category : #accessing }
-CompiledBlock >> numberOfReservedLiterals [
-
-	^ 1
-]
-
-{ #category : #accessing }
 CompiledBlock >> outerCode [
 	"answer the compiled code that I am installed in, or nil if none."
 	^self literalAt: self numLiterals
@@ -95,11 +107,6 @@ CompiledBlock >> outerCode [
 { #category : #accessing }
 CompiledBlock >> outerCode: aCompiledCode [
 	^self literalAt: self numLiterals put: aCompiledCode
-]
-
-{ #category : #accessing }
-CompiledBlock >> penultimateLiteral [
-	^ nil
 ]
 
 { #category : #accessing }
@@ -113,13 +120,22 @@ CompiledBlock >> primitive [
 ]
 
 { #category : #printing }
-CompiledBlock >> printOn: s [
-	s << 'compiledBlock'
+CompiledBlock >> printOn: anStream [
+	
+	anStream 
+		nextPutAll: 'a CompiledBlock: ';
+		nextPutAll: self sourceNode sourceCode 
 ]
 
 { #category : #compatibility }
 CompiledBlock >> properties [
 	^ nil->nil
+]
+
+{ #category : #properties }
+CompiledBlock >> propertyAt: aString [ 
+	
+	^ nil
 ]
 
 { #category : #comparing }

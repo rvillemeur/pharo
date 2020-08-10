@@ -112,7 +112,7 @@ RGTraitV2Strategy >> classTrait: anRGMetatraitDefinition [
 { #category : #'private - backend access' }
 RGTraitV2Strategy >> classVarNames [
 
-	^ self classVariables collect: #name
+	^ self classVariables collect: [ :each | each name ]
 ]
 
 { #category : #'class variables' }
@@ -550,7 +550,7 @@ RGTraitV2Strategy >> sharedPools [
 		each isSymbol 
 			ifTrue: [ self environment ask behaviorNamed: each name ]
 			ifFalse: [ 
-				(each isVariableDefinition and: [each isPoolVariable ])
+				(each isVariable and: [each isPoolVariable ])
 					ifTrue: [ 
 						| beh | 
 						beh := self environment ask behaviorNamed: each name.

@@ -95,6 +95,14 @@ RBArrayNode >> addNodesFirst: aCollection [
 ]
 
 { #category : #accessing }
+RBArrayNode >> allStatements [
+	^ statements asOrderedCollection copy
+			addAll: super allStatements;
+			yourself
+
+]
+
+{ #category : #accessing }
 RBArrayNode >> children [
 	^ self statements
 ]
@@ -146,7 +154,7 @@ RBArrayNode >> isDynamicArray [
 
 { #category : #testing }
 RBArrayNode >> isFaulty [
-	^self statements anySatisfy: #isFaulty
+	^self statements anySatisfy: [:each | each isFaulty]
 ]
 
 { #category : #testing }

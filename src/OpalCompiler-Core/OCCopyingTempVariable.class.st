@@ -5,12 +5,23 @@ Not: the temp vector is passed as a copying temp, too.
 "
 Class {
 	#name : #OCCopyingTempVariable,
-	#superclass : #OCTempVariable,
+	#superclass : #TemporaryVariable,
 	#instVars : [
 		'originalVar'
 	],
 	#category : #'OpalCompiler-Core-Semantics'
 }
+
+{ #category : #queries }
+OCCopyingTempVariable >> definingNode [
+	^originalVar definingNode
+]
+
+{ #category : #accessing }
+OCCopyingTempVariable >> index: anIndex [
+	self scope == originalVar scope ifTrue: [ originalVar index: anIndex ].
+	super index: anIndex
+]
 
 { #category : #testing }
 OCCopyingTempVariable >> isCopying [

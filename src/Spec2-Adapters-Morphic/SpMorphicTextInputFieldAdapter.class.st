@@ -8,44 +8,30 @@ Class {
 }
 
 { #category : #'widget API' }
-SpMorphicTextInputFieldAdapter >> accept: aText [
-
-	self model accept: aText
-]
-
-{ #category : #'widget API' }
 SpMorphicTextInputFieldAdapter >> accept: aText notifying: aNotifyier [
 	"We use #asString because rubric send Text instead of strings."
 
-	super accept: aText asString notifying: aNotifyier
-]
-
-{ #category : #'widget API' }
-SpMorphicTextInputFieldAdapter >> acceptOnCR [
-
-	^ self model acceptOnCR
+	super
+		accept: aText asString 
+		notifying: aNotifyier
 ]
 
 { #category : #factory }
 SpMorphicTextInputFieldAdapter >> buildWidget [
 	| newWidget |
 	
-	self flag: #pharo7.	"When support for P7 will be dropped, remove this compatibility hack."
-	newWidget := ((self class environment 
-			at: #SpRubTextFieldMorph 
-			ifAbsent: [ RubTextFieldMorph ]) 
-			on: self)
+	newWidget := (RubTextFieldMorph on: self)
 		getTextSelector: #getText;
 		setTextSelector: #accept:notifying:;
 		getSelectionSelector: #readSelection;
 		menuProvider: self selector: #codePaneMenu:shifted:;
 		setSelectionSelector: #setSelection:;
 		entryCompletion: self entryCompletion;
-		ghostText: self placeholder;
+		ghostText: self getPlaceholderText;
 		encrypted: self encrypted;
 		enabled: self enabled;
 		askBeforeDiscardingEdits: self askBeforeDiscardingEdits;
-		autoAccept: self autoAccept;
+		autoAccept: true;
 		vResizing: #spaceFill;
 		hResizing: #spaceFill;
 		setBalloonText: self help;
@@ -54,10 +40,17 @@ SpMorphicTextInputFieldAdapter >> buildWidget [
 		maxLength: self presenter maxLength;
 		yourself.
 
-	self presenter whenTextChangedDo: [ :text | newWidget setText: text ].
-	self presenter whenPlaceholderChangedDo: [ :text | newWidget ghostText: text ].
-	self presenter whenPasswordChangedDo: [ :isPassword | newWidget encrypted: isPassword ].
-	self presenter whenMaxLengthChangedDo: [ :length | newWidget maxLength: length ].
+	self presenter whenTextChangedDo: [ :text | 
+		newWidget setText: text ].
+	self presenter whenSelectionChangedDo: [ :selectionInterval | 
+		self selectionInterval: selectionInterval ].
+	self presenter whenPlaceholderChangedDo: [ :text | 
+		newWidget ghostText: (text ifNotNil: [ :aString | 
+			aString localizedForPresenter: self presenter ]) ].
+	self presenter whenPasswordChangedDo: [ :isPassword | 
+		newWidget encrypted: isPassword ].
+	self presenter whenMaxLengthChangedDo: [ :length | 
+		newWidget maxLength: length ].
 
 	^ newWidget
 ]
@@ -79,6 +72,13 @@ SpMorphicTextInputFieldAdapter >> encrypted: aBoolean [
 SpMorphicTextInputFieldAdapter >> entryCompletion [
 
 	^ self model entryCompletion
+]
+
+{ #category : #private }
+SpMorphicTextInputFieldAdapter >> getPlaceholderText [
+
+	^ self presenter placeholder ifNotNil: [ :aString | 
+		aString localizedForPresenter: self presenter ]
 ]
 
 { #category : #testing }

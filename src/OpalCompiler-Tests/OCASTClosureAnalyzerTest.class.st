@@ -11,7 +11,7 @@ OCASTClosureAnalyzerTest >> testBlockArgumentIsArgumentVariable [
 	ast doSemanticAnalysis.
 	blockNode := ast body statements first value.
 	self assert: blockNode arguments notEmpty.
-	self assert: blockNode arguments first isArgument
+	self assert: blockNode arguments first isArgumentVariable
 	
 ]
 
@@ -92,7 +92,7 @@ OCASTClosureAnalyzerTest >> testExampleSimpleBlockLocalWhile [
 	self assert: scopes second tempVars size equals: 1.
 	self assert: scopes second tempVector size equals: 0.
 	self deny: (scopes second lookupVar: 'b') isRemote.
-	self assert: (scopes second lookupVar: 'b') isArg.
+	self assert: (scopes second lookupVar: 'b') isArgumentVariable.
 	self deny: (scopes fourth lookupVar: 'hallo') isRemote
 ]
 
@@ -156,7 +156,7 @@ OCASTClosureAnalyzerTest >> testInlinedBlockArgumentIsArgumentVariable [
 	ast doSemanticAnalysis.
 	blockNode := ast body statements first arguments first.
 	self assert: blockNode arguments notEmpty.
-	self assert: blockNode arguments first isArgument
+	self assert: blockNode arguments first isArgumentVariable
 	
 ]
 
@@ -166,7 +166,7 @@ OCASTClosureAnalyzerTest >> testMethodArgumentIsArgumentVariable [
 	ast := (OCOpalExamples>>#exampleWithArgument:) parseTree.
 	ast doSemanticAnalysis .
 	self assert: ast arguments notEmpty.
-	self assert: ast arguments first isArgument
+	self assert: ast arguments first isArgumentVariable
 	
 ]
 
@@ -364,7 +364,7 @@ OCASTClosureAnalyzerTest >> testOptimizedBlockWriteInNestedBlockCase4 [
 	self assert: ast scope tempVars size equals: 0.
 	self assert: ast scope tempVector size equals: 1.
 	self assert: (ast scope lookupVar: 't1') isRemote.
-	self assert: ast scope copiedVars size equals: 1.	"Is this correct, I think that the copied vars should be empty."
+	self assert: ast scope copiedVars size equals: 1.	 "this one copying var is the tempVector"
 
 	scopes := (OCScopesCollector new visitNode: ast) scopes.
 	self assert: scopes second tempVars size equals: 0.
@@ -389,7 +389,7 @@ OCASTClosureAnalyzerTest >> testOptimizedBlockWrittenAfterClosedOverCase1 [
 	self assert: scopes third tempVector size equals: 1.
 
 	self deny: (scopes third lookupVar: 'index') isRemote.
-	"problem: as block is optimized, this var does not need to be remote"
+	"as we are in an optimized loop, the var is considered a remote write"
 	self assert: (scopes third tempVector at: 'temp') isRemote
 ]
 
@@ -457,9 +457,9 @@ OCASTClosureAnalyzerTest >> testSingleRemoteTempVar [
 	self assert: ast scope tempVector size equals: 1.
 
 	self assert: (ast scope lookupVar: 'index') isRemote.
-	self assert: (ast scope lookupVar: 'index') definingScope equals: ast scope.
+	self assert: (ast scope lookupVar: 'index') scope equals: ast scope.
 	self deny: (ast scope lookupVar: 'block') isRemote.
-	self deny: (ast scope lookupVar: 'collection') isRemote
+	self deny: (ast scope lookupVar: 'theCollection') isRemote
 ]
 
 { #category : #'testing - variables' }
@@ -502,7 +502,7 @@ OCASTClosureAnalyzerTest >> testsingleRemoteTempVarWhileWithTempNotInlined [
 	self assert: ast scope tempVector size equals: 1.
 
 	self assert: (ast scope lookupVar: 'index') isRemote.
-	self assert: (ast scope lookupVar: 'index') definingScope equals: ast scope.
+	self assert: (ast scope lookupVar: 'index') scope equals: ast scope.
 	self deny: (ast scope lookupVar: 'block') isRemote
 ]
 
@@ -516,6 +516,6 @@ OCASTClosureAnalyzerTest >> testsingleRemoteTempVarWrittenAfterClosedOver [
 	self assert: ast scope tempVector size equals: 1.
 
 	self assert: (ast scope lookupVar: 'index') isRemote.
-	self assert: (ast scope lookupVar: 'index') definingScope equals: ast scope.
+	self assert: (ast scope lookupVar: 'index') scope equals: ast scope.
 	self deny: (ast scope lookupVar: 'block') isRemote
 ]

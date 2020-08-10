@@ -64,7 +64,7 @@ SpAbstractListPresenter >> clickItem: anInteger [
 	self selectIndex: anInteger
 ]
 
-{ #category : #api }
+{ #category : #TOREMOVE }
 SpAbstractListPresenter >> disableFilter [
 	self itemFilter: nil
 ]
@@ -88,12 +88,12 @@ SpAbstractListPresenter >> doubleClickAtIndex: anIndex [
 	self doActivateAtIndex: anIndex
 ]
 
-{ #category : #api }
+{ #category : #TOREMOVE }
 SpAbstractListPresenter >> enableItemBeginsWithFilter [
 	self itemFilter: [ :each :pattern | each asLowercase beginsWith: pattern asLowercase ]
 ]
 
-{ #category : #api }
+{ #category : #TOREMOVE }
 SpAbstractListPresenter >> enableItemSubstringFilter [
 	self itemFilter: [ :each :pattern | each asLowercase includesSubstring: pattern asLowercase ]
 ]
@@ -102,6 +102,7 @@ SpAbstractListPresenter >> enableItemSubstringFilter [
 SpAbstractListPresenter >> initialize [
 
 	super initialize.
+	self initializeTHaveWrappingScrollBars.
 	
 	activationBlock := [ ].
 	verticalAlignment := SpVerticalAlignment new.
@@ -122,24 +123,30 @@ SpAbstractListPresenter >> isMultipleSelection [
 ]
 
 { #category : #accessing }
-SpAbstractListPresenter >> itemAt: anInteger [ 
-	
-	^ self model at: anInteger
+SpAbstractListPresenter >> itemAt: index [ 
+	"If there is an adapter the widget items indexes can be different thant the model items indexes, 
+	e.g. when the sort by a column is activated. In this case, ask the adapter to get the element displayed at index."
+
+	^ self adapter 
+			ifNotNil: [ :anAdapter | anAdapter elementAt: index ]
+			ifNil: [ self model at: index ].
+				
+	"^ self model at: index"
 ]
 
 { #category : #private }
 SpAbstractListPresenter >> itemAtPath: anArray [
 	"This is to provide polymorphism with SpTreeTablePresentrer"
 
-	^ self listElementAt: anArray first
+	^ self itemAt: anArray first
 ]
 
-{ #category : #api }
+{ #category : #TOREMOVE }
 SpAbstractListPresenter >> itemFilter [
 	^ itemFilter
 ]
 
-{ #category : #api }
+{ #category : #TOREMOVE }
 SpAbstractListPresenter >> itemFilter: aBlock [
 	"This block will be used with the search field of the list to filter it with the user input dynamically."
 
@@ -158,21 +165,13 @@ SpAbstractListPresenter >> items: aCollection [
 	aCollection is a collection of your domain specific items.
 	This creates a collection model"
 	
-	model collection: aCollection
+	model collection: aCollection.
+	self unselectAll.
 ]
 
 { #category : #private }
-SpAbstractListPresenter >> listElementAt: anIndex [
-	"Return the item at index _anIndex_"
-
-	^ self model at: anIndex ifAbsent: [ nil ]
-]
-
-{ #category : #private }
-SpAbstractListPresenter >> listElementAt: anIndex ifAbsent: aBlock [	
-	"Return the item at index _anIndex_"
-	
-	^ self listItems at: anIndex ifAbsent: aBlock
+SpAbstractListPresenter >> itemsAt: aCollectionOfIndex [
+	^ aCollectionOfIndex collect: [ :anIndex | self itemAt: anIndex ]
 ]
 
 { #category : #api }
@@ -232,8 +231,22 @@ SpAbstractListPresenter >> selectIndex: anInteger [
 ]
 
 { #category : #api }
+SpAbstractListPresenter >> selectIndex: anIndex scrollToSelection: shouldScrollToSelection [
+    self selectIndex: anIndex.
+    shouldScrollToSelection ifTrue: [ 
+        self verticalAlignment desiredVisibleRow: anIndex ].
+]
+
+{ #category : #api }
 SpAbstractListPresenter >> selectIndexes: aCollection [
 	self selectionMode selectIndexes: aCollection
+]
+
+{ #category : #api }
+SpAbstractListPresenter >> selectIndexes: aListOfIndexes scrollToSelection: shouldScrollToSelection [
+    self selectIndexes: aListOfIndexes.
+    shouldScrollToSelection ifTrue: [ 
+        self verticalAlignment desiredVisibleRow: aListOfIndexes first ].
 ]
 
 { #category : #api }
@@ -251,19 +264,14 @@ SpAbstractListPresenter >> selectItems: aCollection [
 SpAbstractListPresenter >> selectedItems [
 	"Return all the selected items in the case of a multiple selection list"
 
-	^ self selectedItemsAtIndexes: self selection selectedIndexes
-]
-
-{ #category : #private }
-SpAbstractListPresenter >> selectedItemsAtIndexes: aCollectionOfIndex [
-	^ aCollectionOfIndex collect: [ :anIndex | self listElementAt: anIndex ]
+	^ self selection selectedItems
 ]
 
 { #category : #api }
 SpAbstractListPresenter >> selectedItemsSorted [
 	"return all the selected items sorted by their index"
 
-	^ self selectedItemsAtIndexes: self selection selectedIndexes sort
+	^ self itemsAt: self selection selectedIndexes sort
 ]
 
 { #category : #accessing }

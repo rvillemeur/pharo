@@ -26,10 +26,9 @@ LookupKey >> < aLookupKey [
 
 { #category : #comparing }
 LookupKey >> = aLookupKey [
-
-	self species = aLookupKey species
-		ifTrue: [^key = aLookupKey key]
-		ifFalse: [^false]
+	^ self species = aLookupKey species
+		ifTrue: [ key = aLookupKey key ]
+		ifFalse: [ false ]
 ]
 
 { #category : #comparing }
@@ -37,12 +36,6 @@ LookupKey >> hash [
 	"Hash is reimplemented because = is implemented."
 
 	^key hash
-]
-
-{ #category : #testing }
-LookupKey >> isVariableBinding [
-	"Return true if I represent a literal variable binding"
-	^true
 ]
 
 { #category : #accessing }

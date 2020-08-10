@@ -79,10 +79,10 @@ BlockClosure >> asContext [
 BlockClosure >> asContextWithSender: aContext [
 	"Inner private support method for evaluation.  Do not use unless you know what you're doing."
 
-	^(Context newForMethod: outerContext method)
+	^(Context newForMethod: outerContext compiledCode)
 		setSender: aContext
 		receiver: outerContext receiver
-		method: outerContext method
+		method: outerContext compiledCode
 		closure: self
 		startpc: startpc;
 		privRefresh
@@ -117,6 +117,12 @@ BlockClosure >> blockCreationBytecodeMessage [
 	^self method encoderClass blockCreationBytecodeMessageAt: startpc method: self method
 
 	"(SortedCollection sortBlock: [:a :b| a compare: b caseSensitive: false]) sortBlock blockCreationBytecodeMessage"
+]
+
+{ #category : #private }
+BlockClosure >> clearTemporariesOn: aContext [
+
+	" I do nothing in the non-full blocks"
 ]
 
 { #category : #accessing }
@@ -304,9 +310,9 @@ BlockClosure >> forkNamed: aString [
 BlockClosure >> hasMethodReturn [
 	"Answer whether the receiver has a method-return ('^') in its code."
 	| scanner endpc |
-	scanner := InstructionStream new method: outerContext method pc: startpc.
+	scanner := InstructionStream new method: outerContext compiledCode pc: startpc.
 	endpc := self endPC.
-	scanner scanFor: [:byte | (outerContext method encoderClass methodReturnBytecodes includes: byte) or: [scanner pc > endpc]].
+	scanner scanFor: [:byte | (outerContext compiledCode encoderClass methodReturnBytecodes includes: byte) or: [scanner pc > endpc]].
 	^scanner pc <= endpc
 ]
 
@@ -330,36 +336,10 @@ BlockClosure >> ifCurtailed: aBlock [
 	^result
 ]
 
-{ #category : #evaluating }
-BlockClosure >> ifError: errorHandlerBlock [
-	"Evaluate the block represented by the receiver, and normally return it's value.  If an error occurs, the errorHandlerBlock is evaluated, and it's value is instead returned.  The errorHandlerBlock must accept zero, one, or two parameters (the error message and the receiver)."
-	"Examples:
-		[1 whatsUpDoc] ifError: [:err :rcvr | 'huh?'].
-		[1 / 0] ifError: [:err :rcvr |
-			'ZeroDivide' = err
-				ifTrue: [Float infinity]
-				ifFalse: [self error: err]]
-"
+{ #category : #private }
+BlockClosure >> initialStackPointer [
 
-	self deprecated: 'Please use ifErrorDo: instead'.
-
-	^ self on: Error do: [:ex |
-		errorHandlerBlock cull: ex description cull: ex receiver]
-]
-
-{ #category : #evaluating }
-BlockClosure >> ifErrorDo: errorHandlerBlock [
-	"Evaluate the block represented by the receiver, and normally return it's value.  If an error occurs, the errorHandlerBlock is evaluated, and it's value is instead returned.  The errorHandlerBlock must accept zero or one parameter (the error object)."
-	"Examples:
-		[1 whatsUpDoc] ifErrorDo: [:err | 'huh?'].
-		[1 / 0] ifErrorDo: [:err |
-			ZeroDivide = err class
-				ifTrue: [Float infinity]
-				ifFalse: [self error: err]]
-"
-
-	^ self on: Error do: [:ex |
-		errorHandlerBlock cull: ex]
+	^ self numArgs + self numCopiedValues
 ]
 
 { #category : #accessing }
@@ -405,6 +385,12 @@ BlockClosure >> isDead [
 	^false
 ]
 
+{ #category : #testing }
+BlockClosure >> isFullBlock [
+
+	^ false
+]
+
 { #category : #private }
 BlockClosure >> isValid [
 	"Answer the receiver."
@@ -414,7 +400,7 @@ BlockClosure >> isValid [
 
 { #category : #accessing }
 BlockClosure >> method [
-	^outerContext method
+	^outerContext compiledCode
 ]
 
 { #category : #scheduling }
@@ -471,7 +457,7 @@ BlockClosure >> numCopiedValues [
 { #category : #accessing }
 BlockClosure >> numLocalTemps [
 	"Answer the number of local temporaries for the receiver"
-	^ self method encoderClass numLocalTempsForBlockAt: startpc in: outerContext method
+	^ self method encoderClass numLocalTempsForBlockAt: startpc in: outerContext compiledCode
 ]
 
 { #category : #accessing }
@@ -506,36 +492,33 @@ BlockClosure >> on: exception fork: handlerAction [
 	up to the top of the stack will be transferred to forked process, with handlerAction on top.
 	(so when the forked process will be resuming, it will enter the handlerAction)
 	 "
-		
-	^ self on: exception do: [:ex |
-		| copy onDoCtx process handler bottom thisCtx |
-		
-		onDoCtx := thisContext.
-		thisCtx := onDoCtx home.
 
-		"find the context on stack for which this method's is sender"
+	^ self
+		  on: exception
+		  do: [ :ex | 
+			  | onDoCtx handler bottom thisCtx |
+			  onDoCtx := thisContext.
+			  thisCtx := onDoCtx home.
 
-		[ onDoCtx sender == thisCtx] whileFalse: [ 
-			onDoCtx := onDoCtx sender.
-			onDoCtx ifNil: [ 
-				"Can't find our home context. seems like we're already forked
-				and handling another exception in new thread. In this case, just pass it through handler."
-				^ handlerAction cull: ex ]
-		 ].
+			  "find the context on stack for which this method's is sender"
 
-		bottom := [ Processor terminateActive ] asContext.
-		onDoCtx privSender: bottom.
+			  [ onDoCtx sender == thisCtx ] whileFalse: [ 
+				  onDoCtx := onDoCtx sender.
+				  onDoCtx ifNil: [ "Can't find our home context. seems like we're already forked
+				and handling another exception in new thread. In this case, just pass it through handler." 
+					  ^ handlerAction cull: ex ] ].
 
-		handler := [ handlerAction cull: ex ] asContext.
-		handler privSender: thisContext sender.
+			  bottom := [ Processor terminateActive ] asContext.
+			  onDoCtx privSender: bottom.
 
-		(Process forContext: handler priority: Processor activePriority) resume.
+			  handler := [ handlerAction cull: ex ] asContext.
+			  handler privSender: thisContext sender.
 
-		"cut the stack of current process"
-		thisContext privSender: thisCtx.
-		nil
-	]
+			  (Process forContext: handler priority: Processor activePriority) resume.
 
+			  "cut the stack of current process"
+			  thisContext privSender: thisCtx.
+			  nil ]
 ]
 
 { #category : #exceptions }
@@ -547,6 +530,20 @@ BlockClosure >> onDNU: selector do: handleBlock [
 			ifTrue: [handleBlock cull: exception]
 			ifFalse: [exception pass]
 	  ]
+]
+
+{ #category : #evaluating }
+BlockClosure >> onErrorDo: errorHandlerBlock [
+	"Evaluate the block represented by the receiver, and normally return it's value.  If an error occurs, the errorHandlerBlock is evaluated, and it's value is instead returned.  The errorHandlerBlock must accept zero or one parameter (the error object)."
+	"Examples:
+		[1 whatsUpDoc] onErrorDo: [:err | 'huh?'].
+		[1 / 0] onErrorDo: [:err |
+			ZeroDivide = err class
+				ifTrue: [Float infinity]
+				ifFalse: [self error: err]]
+"
+
+	^ self on: Error do: [:ex | errorHandlerBlock cull: ex]
 ]
 
 { #category : #accessing }
@@ -618,10 +615,10 @@ BlockClosure >> sender [
 BlockClosure >> simulateValueWithArguments: anArray caller: aContext [
 	"Simulate the valueWithArguments: primitive. Fail if anArray is not an array of the right arity."
 	| newContext sz |
-	newContext := (Context newForMethod: outerContext method)
+	newContext := (Context newForMethod: outerContext compiledCode)
 						setSender: aContext
 						receiver: outerContext receiver
-						method: outerContext method
+						method: outerContext compiledCode
 						closure: self
 						startpc: startpc.
 	((newContext objectClass: anArray) ~~ Array
@@ -639,6 +636,11 @@ BlockClosure >> simulateValueWithArguments: anArray caller: aContext [
 { #category : #accessing }
 BlockClosure >> startpc [
 	^startpc
+]
+
+{ #category : #accessing }
+BlockClosure >> startpcOrOuterCode [
+	^ startpc 
 ]
 
 { #category : #accessing }
@@ -812,7 +814,7 @@ BlockClosure >> valueSuppressingMessages: aListOfStrings [
 { #category : #evaluating }
 BlockClosure >> valueSuppressingMessages: aListOfStrings supplyingAnswers: aListOfPairs [
 
-	^ self valueSupplyingAnswers: aListOfPairs, (aListOfStrings collect: [:each | {each. true}])
+	^ self valueSupplyingAnswers: aListOfPairs, (aListOfStrings collect: [:each | {each . true}])
 ]
 
 { #category : #exceptions }

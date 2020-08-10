@@ -124,27 +124,22 @@ RFASTTranslator >> visitAssignmentNode: anAssignmentNode [
 
 { #category : #'visitor-double dispatching' }
 RFASTTranslator >> visitBlockNode: aBlockNode [
-	| tempNames argumentNames copiedNames |
 	aBlockNode arguments size >15 ifTrue: [self backendError: 'Too many arguments' forNode: aBlockNode ].
 	
 	aBlockNode isInlined ifTrue: [^ self visitInlinedBlockNode: aBlockNode ].
-		
-	argumentNames := aBlockNode argumentNames asArray.
-	tempNames := (aBlockNode scope tempVars asArray collect: [ :each | each name]) copyWithoutAll: argumentNames.
-	copiedNames := (aBlockNode scope  inComingCopiedVars asArray collect: [:each | each name]).
 	
 	aBlockNode hasMetalinkInstead ifFalse: [  
 	methodBuilder
-			pushClosureCopyCopiedValues: copiedNames
-			args: argumentNames
+			pushClosureCopyCopiedValues: aBlockNode scope inComingCopiedVarNames
+			args: aBlockNode argumentNames
 			jumpTo:  #block.
 	 
 	aBlockNode scope tempVector ifNotEmpty: [
 		methodBuilder 
 			createTempVectorNamed: aBlockNode scope tempVectorName 
-			withVars: (aBlockNode scope tempVector collect: [:each| each name]) asArray.
+			withVars: aBlockNode scope tempVectorVarNames.
 	].
-	methodBuilder addTemps: tempNames.
+	methodBuilder addTemps: aBlockNode scope tempVarNamesWithoutArguments.
 	self emitPreamble: aBlockNode.
 	self emitMetaLinkBefore: aBlockNode.
 	valueTranslator visitNode: aBlockNode body.
@@ -184,23 +179,17 @@ RFASTTranslator >> visitInlinedBlockNode: anOptimizedBlockNode [
 			- we call IRBuilder to add temps
 	"
 	
-	| argumentNames tempNames  copiedNames  |
-	argumentNames := anOptimizedBlockNode argumentNames asArray.
-	tempNames := (anOptimizedBlockNode scope tempVars collect: [ :each | each name asSymbol]) copyWithoutAll: argumentNames.
-	copiedNames := (anOptimizedBlockNode scope inComingCopiedVars collect: [:each | each name]) asArray.
-	
-	
+	methodBuilder mapToNode: anOptimizedBlockNode.
 	anOptimizedBlockNode scope tempVector ifNotEmpty: [
 		methodBuilder 
 			createTempVectorNamed: anOptimizedBlockNode scope tempVectorName 
-			withVars: (anOptimizedBlockNode scope tempVector collect: [:each| each name]) asArray.
+			withVars: (anOptimizedBlockNode scope tempVector collect: [:each| each name]).
 	].
-	
-	methodBuilder addTemps: tempNames.
-	methodBuilder addTemps: copiedNames.
-	methodBuilder addTemps: argumentNames.
+	methodBuilder addTemps: anOptimizedBlockNode scope tempVarNamesWithoutArguments.
+	methodBuilder addTemps: anOptimizedBlockNode scope inComingCopiedVarNames.
+	methodBuilder addTemps: anOptimizedBlockNode argumentNames.
 	anOptimizedBlockNode isInlinedLoop ifTrue: [
-		tempNames do: [ :tempName |
+		anOptimizedBlockNode scope tempVarNamesWithoutArguments do: [ :tempName |
 			methodBuilder pushLiteral: nil.
 			methodBuilder storeTemp: tempName.
 			methodBuilder popTop.
@@ -209,6 +198,7 @@ RFASTTranslator >> visitInlinedBlockNode: anOptimizedBlockNode [
 	self emitMetaLinkBefore: anOptimizedBlockNode.
 	self visitNode: anOptimizedBlockNode body.
 	self emitMetaLinkAfterNoEnsure: anOptimizedBlockNode.
+	methodBuilder popMap.
 ]
 
 { #category : #'visitor-double dispatching' }
@@ -264,7 +254,7 @@ RFASTTranslator >> visitMethodNode: aMethodNode [
 	aMethodNode scope tempVector ifNotEmpty: [
 		methodBuilder 
 			createTempVectorNamed: aMethodNode scope tempVectorName 
-			withVars: (aMethodNode scope tempVector collect: [:each| each name]) asArray.
+			withVars: aMethodNode scope tempVectorVarNames.
 	].
 	effectTranslator visitNode: aMethodNode body.
 	aMethodNode isPrimitive ifFalse: [self emitMetaLinkAfterNoEnsure: aMethodNode].
@@ -309,7 +299,7 @@ RFASTTranslator >> visitVariableNode: aVariableNode [
 	self emitMetaLinkBefore: aVariableNode.
 	aVariableNode hasMetalinkInstead
 				ifTrue: [ self emitMetaLinkInstead: aVariableNode ]
-				ifFalse: [ self visitVariableValue: aVariableNode binding variable].
+				ifFalse: [ self visitVariableValue: aVariableNode binding].
 	self emitMetaLinkAfterNoEnsure: aVariableNode.
 	
 	
@@ -317,8 +307,10 @@ RFASTTranslator >> visitVariableNode: aVariableNode [
 
 { #category : #reflectivity }
 RFASTTranslator >> visitVariableValue: aVariable [
-	self flag: #pharoTodo. "needs to be extendend to other kinds of variables and cleaned"
-	((aVariable isKindOf: LiteralVariable) or: [ (aVariable isKindOf: Slot) ]) ifTrue: [ self emitPreamble: aVariable. self emitMetaLinkBefore: aVariable. ].
-	aVariable emitValue: methodBuilder.
-	((aVariable isKindOf: LiteralVariable) or: [ (aVariable isKindOf: Slot) ]) ifTrue: [self emitMetaLinkAfterNoEnsure: aVariable].
+	self emitPreamble: aVariable. 
+	self emitMetaLinkBefore: aVariable. 
+	aVariable hasMetalinkInstead 
+		ifTrue: [self emitMetaLinkInstead: aVariable]
+		ifFalse: [aVariable emitValue: methodBuilder].
+	self emitMetaLinkAfterNoEnsure: aVariable.
 ]

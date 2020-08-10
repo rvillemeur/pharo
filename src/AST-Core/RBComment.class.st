@@ -25,7 +25,7 @@ instance variables
 "
 Class {
 	#name : #RBComment,
-	#superclass : #RBNode,
+	#superclass : #RBProgramNode,
 	#instVars : [
 		'contents',
 		'start'

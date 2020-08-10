@@ -49,7 +49,6 @@ BaselineOfIDE >> additionalInitialization [
 
 	PolymorphSystemSettings desktopColor:  Color veryVeryLightGray lighter.
 	SourceCodeFonts setSourceCodeFonts: 10.
-	LogicalFontManager unload.
 	FreeTypeSystemSettings loadFt2Library: true.
 	FreeTypeSettings current monitorType: #LCD.
 	FreeTypeSettings current glyphContrast: 55.
@@ -63,7 +62,7 @@ BaselineOfIDE >> additionalInitialization [
 
 	MCSaveVersionDialog previousMessages add: String new.
 
-	RBProgramNode formatterClass: (self class environment at: #BIConfigurableFormatter ifAbsent: [RBSimpleFormatter]).
+	RBProgramNode formatterClass: (self class environment at: #EFFormatter ifAbsent: [RBSimpleFormatter]).
 
 	Color flushCache.
 	
@@ -83,9 +82,7 @@ BaselineOfIDE >> additionalInitialization [
 	SDL_Event initialize.
 	
 	HiRulerBuilderTest initialize.
-	
-	LogicalFontManager current addFontProvider: FreeTypeFontProvider current.
-	
+		
 	3 timesRepeat: [
 		Smalltalk garbageCollect.
 		Undeclared removeUnreferencedKeys.].
@@ -130,20 +127,22 @@ BaselineOfIDE >> baseline: spec [
 		spec baseline: 'SUnit' with: [ 
 			spec
 				repository: repository;
-				loads: 'Tests' ].
-		
-		spec baseline: 'BlueInk' with: [ 
- 			spec repository: repository; loads: #('Tests') ].				
+				loads: 'Tests' ].				
 
 		spec baseline: 'EnlumineurFormatter' with: [ 
 			spec
 				repository: repository;
-				loads: #( 'Tests' 'UI-Tests' ) ].
+				loads: #( 'Tests' ) ].		
+					
+		spec baseline: 'Reflectivity' with: [ 
+			spec
+				repository: repository;
+				loads: #( 'tests' ) ].
+				
 				
 		spec package: 'Network-Tests'.
 		spec package: 'Network-Mail-Tests'.
 		spec package: 'Gofer-Tests'.
-		spec package: 'System-Hashing-Testing'.
 		spec package: 'Rubric-SpecFindReplaceDialog'.
 		spec baseline: 'Metacello' with: [ 
 			spec
@@ -189,6 +188,18 @@ BaselineOfIDE >> baseline: spec [
 		spec baseline: 'PharoGlamour' with: [ spec repository: repository ].
 		spec baseline: 'PharoGT' with: [ spec repository: repository ].
 		spec baseline: 'HeuristicCompletion' with: [ spec repository: repository ].
+		spec baseline: 'Spec2' with: [ 
+			spec 
+				repository: repository;
+				loads: #('Code' 'CodeTests') ].
+		spec baseline: 'NewTools' with: [
+			spec 
+				repository: repository;
+				loads: #('Playground' 'Inspector' 'Debugger') ].
+			
+		spec baseline: 'Microdown' with: [ spec 
+				repository: self packageRepositoryURL ].
+
 		spec package: 'Pharo-WelcomeHelp' ]
 ]
 
@@ -196,7 +207,7 @@ BaselineOfIDE >> baseline: spec [
 BaselineOfIDE >> loadIceberg [
 	Metacello new
 		baseline: 'Iceberg';
-		repository: 'github://pharo-vcs/iceberg:v1.6.9';
+		repository: 'github://pharo-vcs/iceberg:v1.8.3';
 		onConflictUseLoaded;
 		load.
 	(Smalltalk classNamed: #Iceberg) enableMetacelloIntegration: true.

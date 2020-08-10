@@ -271,6 +271,27 @@ CompiledMethodTest >> tearDown [
 	super tearDown
 ]
 
+{ #category : #'tests - instance variable' }
+CompiledMethodTest >> testAccessesField [		
+	| method |
+	method := self class compiledMethodAt: #readX.
+	self assert: (method accessesField: 4).
+	
+	method := self class compiledMethodAt: #readXandY.
+	self assert: (method accessesField: 5).
+	
+	
+	"read is not write"
+	method := self class compiledMethodAt: #writeX.
+	self assert: (method accessesField: 4).
+	
+	method := self class compiledMethodAt: #writeXandY.
+	self assert: (method accessesField: 4).
+	
+	method := self class compiledMethodAt: #writeXandY.
+	self assert: (method accessesField: 5)
+]
+
 { #category : #'tests - slots' }
 CompiledMethodTest >> testAccessesSlot [
 
@@ -394,6 +415,11 @@ CompiledMethodTest >> testEqualityInstanceSideMethod [
 
 	self assert: (method1 literalAt: method1 numLiterals) identicalTo: (method2 literalAt: method2 numLiterals).
 	self assert: method1 equals: method2
+]
+
+{ #category : #'tests - testing' }
+CompiledMethodTest >> testHasComment [
+	self assert: (CompiledMethod>>#hasComment) hasComment
 ]
 
 { #category : #'tests - instance variable' }

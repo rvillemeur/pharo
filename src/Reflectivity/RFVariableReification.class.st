@@ -12,7 +12,7 @@ Class {
 
 { #category : #'plugin interface' }
 RFVariableReification class >> entities [
-	^{RBVariableNode. LiteralVariable . Slot}
+	^{RBVariableNode. Variable}
 ]
 
 { #category : #'plugin interface' }
@@ -36,5 +36,5 @@ RFVariableReification >> genForLiteralVariable [
 RFVariableReification >> genForRBVariableNode [
 	
 	entity isTemp ifTrue: [ ^self error: 'Temps can not be reified yet' ]. 
-	^RFLiteralVariableNode value: entity binding variable
+	^RFLiteralVariableNode value: entity binding
 ]

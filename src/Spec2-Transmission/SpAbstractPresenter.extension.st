@@ -33,6 +33,14 @@ SpAbstractPresenter >> transmitTo: aPresenter [
 ]
 
 { #category : #'*Spec2-Transmission' }
+SpAbstractPresenter >> transmitTo: aPresenter postTransmission: postValuable [
+	
+	^ self defaultOutputPort
+		transmitTo: aPresenter defaultInputPort
+		postTransmission: postValuable
+]
+
+{ #category : #'*Spec2-Transmission' }
 SpAbstractPresenter >> transmitTo: aPresenter transform: aValuable [
 	
 	^ self defaultOutputPort

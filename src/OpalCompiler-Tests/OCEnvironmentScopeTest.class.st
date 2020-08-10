@@ -4,9 +4,6 @@ tests related to environment
 Class {
 	#name : #OCEnvironmentScopeTest,
 	#superclass : #TestCase,
-	#instVars : [
-		'oldSystemAnnouncer'
-	],
 	#category : #'OpalCompiler-Tests-Semantic'
 }
 
@@ -39,11 +36,4 @@ OCEnvironmentScopeTest >> testCompileWithProductionEnvironment [
 	self assert: method class equals: MyCompiledMethodForTesting.			
 	return := method valueWithReceiver: nil arguments: #().
 	self assert: return equals: 3.
-]
-
-{ #category : #'tests - environment' }
-OCEnvironmentScopeTest >> testCreateEnvironmentScope [
-	| new |
-	new := OCEnvironmentScope for: Smalltalk globals.
-	self assert: ((new lookupVar: #Object) isKindOf: OCLiteralVariable).
 ]

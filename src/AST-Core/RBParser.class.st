@@ -33,26 +33,21 @@ RBParser class >> errorNodeBlock [
 	^ [ :aString :position :parser| parser parseErrorNode: aString ]
 ]
 
-{ #category : #accessing }
-RBParser class >> parseCompiledMethod: aCompiledMethod [
-	^ self parseMethod: aCompiledMethod sourceCode
-]
-
 { #category : #parsing }
 RBParser class >> parseExpression: aString [ 
 	^self parseExpression: aString onError: nil
 ]
 
 { #category : #parsing }
-RBParser class >> parseExpression: aString onError: aBlock [ 
-	| node parser |
-	parser := self new.
-	parser errorBlock: aBlock.
-	parser initializeParserWith: aString.
-	node := parser parseExpression: aString.
-	^(node statements size == 1 and: [node temporaries isEmpty]) 
-		ifTrue: [node statements first]
-		ifFalse: [node]
+RBParser class >> parseExpression: aString onError: aBlock [
+	| node |
+	node := self new
+		        errorBlock: aBlock;
+		        initializeParserWith: aString;
+		        parseExpression: aString.
+	^ (node statements size == 1 and: [ node temporaries isEmpty ])
+		  ifTrue: [ node statements first ]
+		  ifFalse: [ node ]
 ]
 
 { #category : #parsing }
@@ -74,11 +69,10 @@ RBParser class >> parseFaultyMethod: aString [
 ]
 
 { #category : #parsing }
-RBParser class >> parseLiterals: aString [ 
-	| parser |
-	parser := self new.
-	parser initializeParserWith: aString.
-	^parser parseLiterals: aString
+RBParser class >> parseLiterals: aString [
+	^ self new
+		  initializeParserWith: aString;
+		  parseLiterals: aString
 ]
 
 { #category : #parsing }
@@ -89,21 +83,27 @@ RBParser class >> parseMethod: aString [
 { #category : #parsing }
 RBParser class >> parseMethod: aString onError: aBlock [ 
 	| parser |
-	parser := self new.
-	parser errorBlock: aBlock.
-	parser initializeParserWith: aString.
+	parser := self new
+		errorBlock: aBlock;
+		initializeParserWith: aString.
 	^ [ parser parseMethod: aString ]
 		on: ReparseAfterSourceEditing
 		do: [ :exception | self parseMethod: exception newSource onError: aBlock ]
 ]
 
 { #category : #parsing }
-RBParser class >> parseMethodPattern: aString [ 
-	| parser |
-	parser := self new.
-	parser errorBlock: [:error :position | ^nil].
-	parser initializeParserWith: aString.
-	^parser parseMessagePattern selector
+RBParser class >> parseMethodPattern: aString [
+	^ (self new
+		   errorBlock: [ :error :position | ^ nil ];
+		   initializeParserWith: aString;
+		   parseMessagePattern) selector
+]
+
+{ #category : #parsing }
+RBParser class >> parsePragma: aString [
+	^ self new
+		  initializeParserWith: aString;
+		  parsePragmaAndReturn
 ]
 
 { #category : #parsing }
@@ -129,6 +129,7 @@ RBParser class >> parseRewriteMethod: aString onError: aBlock [
 { #category : #private }
 RBParser >> addCommentsTo: aNode [
 	aNode comments: aNode comments , comments.
+	comments do: [ :each | each parent: aNode ].
 	comments := OrderedCollection new
 ]
 
@@ -623,9 +624,7 @@ RBParser >> parseLiterals: aString [
 	stream := (Array new: 5) writeStream.
 	[self atEnd or: [currentToken isSpecial and: [currentToken value = $)]]] 
 		whileFalse: [stream nextPut: self parseLiteralArrayObject].
-	
 	self atEnd ifFalse: [ ^ self parserError: 'Unknown input at end'].
-	
 	^stream contents collect: [ :each | each value ]
 ]
 
@@ -755,10 +754,9 @@ RBParser >> parsePrimitiveKeywordPragma [
 
 { #category : #'private-parsing' }
 RBParser >> parsePrimitiveLiteral [
-
-	currentToken isNumberLiteralToken
-		ifTrue: [ ^ self parseNumberLiteral ]
-		ifFalse: [ ^ self parsePrimitiveValueLiteral ]
+	^ currentToken isNumberLiteralToken
+		ifTrue: [ self parseNumberLiteral ]
+		ifFalse: [ self parsePrimitiveValueLiteral ]
 ]
 
 { #category : #'private-parsing' }
